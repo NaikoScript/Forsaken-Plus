@@ -1,2 +1,17 @@
-# Forsaken-Plus
-A script made for the game called Breaking Point in roblox
+# Breaking Plus
+> [!IMPORTANT]
+> **Join my [discord server](https://discord.gg/vAWJMYJYcR) if you find any bugs or have issues with the script**
+> 
+## Script thumbnail
+![ForsakenPlus](https://github.com/user-attachments/assets/dd8e41cc-78e0-4377-a411-5612d43b7d55)
+## Script version
+`Version ???`
+## Shortened Script
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NaikoScript/Forsaken-Plus/main/Script"))()
+```
+## Game information
+`Last seen update : ??D/??M/????`
+```
+https://www.roblox.com/games/18687417158
+```
