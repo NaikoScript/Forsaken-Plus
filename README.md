@@ -3,17 +3,17 @@
 > **This script has been made by [Naiko Exploits](https://github.com/NaikoScript) in collaboration with [Nikoleto Scripts](https://github.com/nikoladhima)**
 
 > [!IMPORTANT]
-> **Join Naiko Exploits [discord server](https://discord.gg/vAWJMYJYcR) if you find any bugs or have issues with the script**
+> **Join Naiko Exploits [discord server](https://discord.gg/Fs47aNrdGF) if you find any bugs or have issues with the script**
 ## Script thumbnail
 ![ForsakenPlus](https://github.com/user-attachments/assets/dd8e41cc-78e0-4377-a411-5612d43b7d55)
 ## Script version
-`Version ???`
+`Version 1.0`
 ## Shortened Script
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/NaikoScript/Forsaken-Plus/main/Script"))()
 ```
 ## Game information
-`Last seen update : ??D/??M/????`
+`Last seen update : 03D/05M/2026`
 ```
 https://www.roblox.com/games/18687417158
 ```
