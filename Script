@@ -1,13 +1,21 @@
-
 -- Forsaken Plus Made by Naiko Exploits in collaboration with nikoleto scripts --
 
 if workspace.DistributedGameTime < 3 then
 	task.wait(3 - workspace.DistributedGameTime)
 end
 
+game.StarterGui:SetCore("SendNotification",
+    {
+        Title = "IMPORTANT",
+        Text = "Forsaken plus only works in forsaken clone games for the time being because of the new ui in forsaken",
+        Icon = "rbxasset://textures/DevConsole/Warning.png",
+        Duration = 25
+    }
+)
+
 if game.CoreGui:FindFirstChild("Plus") then
     return warn("Script already running")
-elseif game.GameId == 6331902150 or game.GameId == 7464167604 then
+elseif game.GameId == 6331902150 or game.GameId == 7464167604 or workspace:GetAttribute("ServerType") then
 	Instance.new("BoolValue", game.CoreGui).Name = "Plus"
 else
 	return warn("Incorrect game")
@@ -20,7 +28,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.0"
+local Version = "1.1"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -51,14 +59,14 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Debris = game:GetService("Debris")
-local Network = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("Network")
+local Network = ReplicatedStorage:FindFirstChild("Modules") and (ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) and ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true):FindFirstChild("Network")) or ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) or nil
 local GameMap = workspace:FindFirstChild("Map") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame"):FindFirstChild("Map") or nil
 local RoundEvent = Instance.new("BindableEvent")
 local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,true,false
 local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-05-03"
+local GameVersionForScript = "2026-05-17"
 local CurrentGameVersion = MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -169,6 +177,16 @@ local FeatureLoadout; FeatureLoadout = {
                 IsFixingGenerator = not Value
             end
         },
+        ["AutoPickup"] = {
+            ["DisplayDescription"] = "Auto-Picks up Items near you",
+            ["DisplayTitle"] = "Auto Pickup",
+            ["LayoutOrder"] = 2,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value) end
+        },
     },
 
     ["Features"] = {
@@ -217,7 +235,10 @@ local FeatureLoadout; FeatureLoadout = {
                 if KillerDoorsFolder then
                     for i,v in KillerDoorsFolder:GetChildren() do
                         v.Color = Color
-                        v.CanCollide = not Value
+                        if v:GetAttribute("OriginalCanCollide") == nil then
+                            v:SetAttribute("OriginalCanCollide", v.CanCollide)
+                        end
+                        v.CanCollide = v:GetAttribute("OriginalCanCollide") ~= false and not Value or false
                         if KillerCollisions then
                             local Params = OverlapParams.new()
                             Params.FilterType = Enum.RaycastFilterType.Include
@@ -235,10 +256,38 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
+        ["DisableToxicTrails"] = {
+            ["DisplayDescription"] = "Disables damaging trails for john doe",
+            ["DisplayTitle"] = "Disable John Doe's Trails",
+            ["LayoutOrder"] = 4,
+            ["Savable"] = false,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {
+                ["Requirement"] = true
+            },
+            ["ScriptFunction"] = function(self, Value)
+                -- No functionality yet
+            end
+        },
+        ["SmallerSpikeCollisions"] = {
+            ["DisplayDescription"] = "Makes spike collisions smaller for john doe's ability",
+            ["DisplayTitle"] = "Smaller Spike Collisions",
+            ["LayoutOrder"] = 5,
+            ["Savable"] = false,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {
+                ["Requirement"] = true
+            },
+            ["ScriptFunction"] = function(self, Value)
+                -- No functionality yet
+            end
+        },
         ["EnableJumping"] = {
             ["DisplayDescription"] = "Enables Jumping for when its disabled",
             ["DisplayTitle"] = "Enable Jumping",
-            ["LayoutOrder"] = 4,
+            ["LayoutOrder"] = 7,
             ["Savable"] = false,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
@@ -252,7 +301,7 @@ local FeatureLoadout; FeatureLoadout = {
         ["StaminaPreset"] = {
             ["DisplayDescription"] = "Select a Stamina Preset",
             ["DisplayTitle"] = "Stamina Preset",
-            ["LayoutOrder"] = 7,
+            ["LayoutOrder"] = 8,
             ["Savable"] = false,
             ["InstanceType"] = "StringValue",
             ["DefaultInstanceValue"] = "Original",
@@ -312,7 +361,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DisplayDescription"] = "Enables ESP for the killer(s)",
             ["DisplayTitle"] = "Killer(s) (ESP)",
             ["LayoutOrder"] = 3,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {
@@ -354,7 +403,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DisplayDescription"] = "Enables ESP for the survivor(s)",
             ["DisplayTitle"] = "Survivor(s) (ESP)",
             ["LayoutOrder"] = 6,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {
@@ -396,7 +445,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DisplayDescription"] = "Enables ESP for the Generator(s)",
             ["DisplayTitle"] = "Generator(s) (ESP)",
             ["LayoutOrder"] = 9,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {
@@ -450,7 +499,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DisplayDescription"] = "Enables ESP for the Item(s)",
             ["DisplayTitle"] = "Item(s) (ESP)",
             ["LayoutOrder"] = 12,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {
@@ -648,6 +697,34 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
+        ["InstaKill"] = {
+            ["DisplayDescription"] = "Allows you to instantly kill anyone (Host Exclusive)",
+            ["DisplayTitle"] = "Instant Kill",
+            ["LayoutOrder"] = 11,
+            ["Savable"] = false,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {
+                ["Requirement"] = "PrivateServerOwner"
+            },
+            ["ScriptFunction"] = function(self, Value)
+                 if workspace:GetAttribute("InstaKill") == nil then
+                    workspace:SetAttribute("InstaKill", Value)
+                    self.Instance.Value = Value
+                    task.delay(1.5, function()
+                        workspace:SetAttribute("InstaKill",nil)
+                    end)
+                    if Value then
+                        repeat
+                            Network:WaitForChild("RemoteEvent"):FireServer("ExecuteCommand", {"GiveStatus", game.Players.LocalPlayer.Name, "Strength", 99999, 1})
+                            task.wait(0.5)
+                        until not self.Instance.Value
+                    end
+                else
+                    self.Instance.Value = workspace:GetAttribute("InstaKill")
+                end
+            end
+        },
         ["Rejoin"] = {
             ["DisplayDescription"] = "Makes you rejoin the exact same server",
             ["DisplayTitle"] = "Rejoin",
@@ -693,6 +770,7 @@ PlusButton.InvertedIcon.ImageColor3 = Color3.fromRGB(105, 255, 212)
 PlusButton.InvertedIcon.Image = "rbxassetid://85001556314176"
 PlusButton.InvertedIcon.ImageTransparency = 1
 PulloutFramePlus.Title.TextColor3 = Color3.fromRGB(0, 170, 127)
+PulloutFramePlus.Position = UDim2.fromScale(0,0.5)
 PulloutFramePlus.ArtAsset.ImageColor3 = Color3.fromRGB(0, 170, 127)
 PulloutFramePlus.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
 PulloutFramePlus.Inverted.ImageTransparency = 1
@@ -713,6 +791,7 @@ PlusMenu.Visible = false
 PlusMenu.Size = UDim2.new(1,-20,0,0)
 PlusMenu.SettingsContainer.ImageColor3 = Color3.fromRGB(0, 170, 127)
 PlusMenu.SettingsContainer.Contents.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 127)
+PlusMenu.ZIndex += 25
 PlusMenu.Event:Destroy()
 for i,v in PlusMenu.SettingsContainer.Contents:QueryDescendants("Frame,ImageLabel") do v:Destroy() end
 
@@ -830,8 +909,8 @@ local function ColoredPrint(Text, Icon, Color)
     end)
 end
 
-function PlaySound(Sound,Settings)
-    local Sound = typeof(Sound) == "string" and game:GetService("ReplicatedStorage").Assets.Sounds:FindFirstChild(Sound,true) or (typeof(Sound) == "Instance" and Sound) or nil
+function PlaySound(SoundName,Settings)
+    local Sound = typeof(SoundName) == "string" and game:GetService("ReplicatedStorage").Assets.Sounds:FindFirstChild(SoundName,true) or (typeof(SoundName) == "Instance" and SoundName) or nil
     if Sound then
         task.spawn(function()
             Sound = Sound:Clone()
@@ -845,7 +924,7 @@ function PlaySound(Sound,Settings)
             Debris:AddItem(Sound, Sound.TimeLength + 0.1)
         end)
     else
-        warn("Failed to play sound: ".. Sound)
+        warn("Failed to play sound: ".. tostring(SoundName))
     end
 end
 
@@ -886,12 +965,20 @@ end
 local function CheckDistance(Highlight, TargetRoot, Settings)
     if workspace.CurrentCamera and TargetRoot then
         local Distance = (workspace.CurrentCamera.CFrame.Position - TargetRoot.Position).Magnitude
-        if Distance>3000 then
+        if Distance>1200 then
             Distance = 0
         end
         if Distance >= Settings["MinDistance"] then
-            local TransparencyAmount = 1 - math.clamp((Distance - Settings["MinDistance"])/(Settings["MaxDistance"] - Settings["MinDistance"]),0.2,1)
-            TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount, OutlineTransparency = TransparencyAmount < 0.8 and TransparencyAmount-0.2 or TransparencyAmount}):Play()
+            local TransparencyAmount = math.clamp(1 - math.clamp((Distance - Settings["MinDistance"]) / (Settings["MaxDistance"] - Settings["MinDistance"]), 0, 1), 0.35, 1)
+            local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount, OutlineTransparency = TransparencyAmount < 0.8 and TransparencyAmount - 0.2 or TransparencyAmount})
+            Tween.Parent = Highlight
+            Tween:Play()
+            Debris:AddItem(Tween, 0.1)
+        else
+            local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = 1, OutlineTransparency = 1})
+            Tween.Parent = Highlight
+            Tween:Play()
+            Debris:AddItem(Tween, 0.1)
         end
     end
 end
@@ -946,7 +1033,7 @@ function HandlePrivacySettings(Player)
            local PrivacySettings = PlayerData:FindFirstChild("Privacy",true)
             if PrivacySettings then
                 for i,v in PrivacySettings:GetChildren() do
-                    if not v:GetAttribute("OriginalValue") then
+                    if not v:GetAttribute("OriginalValue") and v:IsA("BoolValue") then
                         v:SetAttribute("OriginalValue", v.Value)
                         v:GetPropertyChangedSignal("Value"):Connect(function()
                             if FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"] and FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"].Value then
@@ -960,7 +1047,7 @@ function HandlePrivacySettings(Player)
                         else
                             v.Value = v:GetAttribute("OriginalValue")
                         end
-                    else
+                    elseif v:IsA("BoolValue") then
                         if FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"] and FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"].Value then
                             v.Value = false
                         else
@@ -1002,7 +1089,7 @@ function IsHitboxNotNear(HitboxPart,Position)
         Params.FilterType = Enum.RaycastFilterType.Include
         Params.FilterDescendantsInstances = {HitboxPart}
         Params.MaxParts = 1
-        local Result = workspace:GetPartBoundsInRadius(Position, 6.7, Params)
+        local Result = workspace:GetPartBoundsInRadius(Position, 3, Params)
         return #Result == 0
     else
         ColoredPrint("HitboxPart/Position/HumanoidRootPart is nil while trying to check if near", "info", Color3.new(1,0.25,0))
@@ -1025,8 +1112,9 @@ function IsPoisonOnPosition(Position)
 end
 
 function GoUnder(Value)
-    local Offset = 12
+    local Offset = 15
     if Value == nil then
+        IsUnderground = false
         Value = FeatureLoadout["Features"]["Invincible"]["Instance"].Value
     end
     if Value and not SideBar:GetAttribute("WasVisible") and not IsUnderground then
@@ -1038,14 +1126,15 @@ function GoUnder(Value)
         LocalRoot.CFrame = OldCFrame * CFrame.new(0, -Offset, 0)
         LocalHumanoid.CameraOffset = Vector3.new(0, 12e12 ,0)
         local Tries = 0
+        local TimerStop = workspace.DistributedGameTime + 3.5
         repeat
             Tries += 1
             task.wait(0.01)
             LocalRoot.CFrame = OldCFrame * CFrame.new(0, -Offset, 0)
             LocalHead.Anchored = true
-            repeat task.wait(0.03) until IsHitboxNotNear(LocalCharacter:FindFirstChild("QueryHitbox"),OldCFrame.Position) or not LocalRoot or not LocalCharacter or task.wait(2)
+            repeat task.wait(0.02) until IsHitboxNotNear(LocalCharacter:FindFirstChild("QueryHitbox"),OldCFrame.Position) or not LocalRoot or not LocalCharacter or TimerStop < workspace.DistributedGameTime
             IsUnderground = true
-            task.wait(0.03)
+            task.wait(0.02)
             LocalHead.Anchored = false
             LocalRoot.CFrame = OldCFrame
         until IsHitboxNotNear(LocalCharacter:FindFirstChild("QueryHitbox"),OldCFrame.Position) or Tries >= 3
@@ -1055,7 +1144,27 @@ function GoUnder(Value)
             FeatureLoadout["Features"]["Invincible"]["Instance"].Value = false
             task.wait(0.03)
             LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
-            return ColoredPrint("Failed to go invicible! Tried 3 Times and still failed.", "info", Color3.new(1,0.25,0))
+            if game.GameId == 6331902150 or game.GameId == 7464167604 then
+                game.StarterGui:SetCore("SendNotification",
+                    {
+                        Title = "Fail",
+                        Text = "Failed to become invincible, if this keeps happning please report this in the discord server",
+                        Icon = "rbxasset://textures/DevConsole/Warning.png",
+                        Duration = 4.5
+                    }
+                )
+            else
+                game.StarterGui:SetCore("SendNotification",
+                    {
+                        Title = "Fail",
+                        Text = "Failed to become invincible, this feature is not supported here",
+                        Icon = "rbxasset://textures/DevConsole/Warning.png",
+                        Duration = 4.5
+                    }
+                )
+                FeatureLoadout["Features"]["Invincible"]["Instance"]:SetAttribute("Requirement", true)
+            end
+            return ColoredPrint("Failed to go invincible! Tried 3 Times and still failed.", "info", Color3.new(1,0.25,0))
         end
         task.wait(0.1)
         LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
@@ -1114,34 +1223,49 @@ end
 
 -- General Scripting --
 
-local JsonVersionData = game:HttpGet("https://apis.rovalra.com/v1/games/history?place_id=18687417158")
-local Success,TableVersionData = pcall(function() return HttpService:JSONDecode(JsonVersionData) end)
-CurrentGameVersion = (Success and TableVersionData and type(TableVersionData) == "table" and TableVersionData["history"] and TableVersionData["history"][1] and TableVersionData["history"][1]["first_seen"]) or GameVersionForScript
-CurrentGameVersion = CurrentGameVersion:sub(1,10)
-local y,m,d = GameVersionForScript:match("(%d+)-(%d+)-(%d+)")
-local ThenTime = os.time{year=y, month=m, day=d}
-y,m,d = CurrentGameVersion:match("(%d+)-(%d+)-(%d+)")
-local CurrentTime = os.time{year=y, month=m, day=d}
-local DaysSinceScriptUpdate = math.floor(math.abs(ThenTime - os.time()) / 86400)
-local DaysSinceGameUpdate = math.floor(math.abs(CurrentTime - os.time()) / 86400)
-if CurrentGameVersion ~= GameVersionForScript and DaysSinceScriptUpdate > 0 then
-    ColoredPrint("Days since last script update: " .. DaysSinceScriptUpdate,"info", Color3.fromRGB(236, 48, 120))
-    ColoredPrint("Days since game update: " .. DaysSinceGameUpdate,"info", Color3.fromRGB(236, 48, 120))
-    FeatureLoadout["Outdated"] = {
-          ["TabAttributes"] = {
-            ["DisplayTitle"] = '<font color="rgb(255,166,0)">⚠</font>' .. RichTextGradientColor(" SCRIPT ISN'T TESTED FOR THIS GAME VERSION ",{Color3.fromRGB(255, 166, 0), Color3.fromRGB(243, 227, 0)}) .. '<font color="rgb(243, 227, 0)">⚠</font>',
-            ["LayoutOrder"] = -1
-        }
-    }
-    ColoredPrint("The game has updated and it has been detected that the script has not been tested/updated for this version.\n All features have been disabled by default to prevent from you possibly getting detected.\n Use the features with caution or wait for a update from the script.", "warning", Color3.fromRGB(255, 166, 0))
-    for i,v in FeatureLoadout do
-        for i2,v2 in v do
-            v2["Savable"] = false
-            if v2["DefaultInstanceValue"] == true and i ~= "Outdated" and i ~= "ExploitFunctions" then
-                v2["DefaultInstanceValue"] = false
+GameVersionForScript = GameVersionForScript:sub(1,10)
+if game.GameId == 6331902150 then
+    if CurrentGameVersion ~= GameVersionForScript then
+        local JsonVersionData = (game:HttpGet("https://apis.rovalra.com/v1/games/history?place_id=18687417158"))
+        local Success,TableVersionData = pcall(function() return HttpService:JSONDecode(tostring(JsonVersionData)) end)
+        CurrentGameVersion = (Success and TableVersionData and type(TableVersionData) == "table" and TableVersionData["history"] and TableVersionData["history"][1] and TableVersionData["history"][1]["first_seen"]) or GameVersionForScript
+        CurrentGameVersion = CurrentGameVersion:sub(1,10)
+        local y,m,d = GameVersionForScript:match("(%d+)-(%d+)-(%d+)")
+        local ThenTime = os.time{year=y, month=m, day=d}
+        y,m,d = CurrentGameVersion:match("(%d+)-(%d+)-(%d+)")
+        local CurrentTime = os.time{year=y, month=m, day=d}
+        local DaysSinceScriptUpdate = math.floor(math.abs(ThenTime - os.time()) / 86400)
+        local DaysSinceGameUpdate = math.floor(math.abs(CurrentTime - os.time()) / 86400)
+        if math.abs(ThenTime-CurrentTime) > 0 and DaysSinceScriptUpdate > 0 then
+            ColoredPrint("Days since last script update: " .. DaysSinceScriptUpdate,"info", Color3.fromRGB(236, 48, 120))
+            ColoredPrint("Days since game update: " .. DaysSinceGameUpdate,"info", Color3.fromRGB(236, 48, 120))
+            FeatureLoadout["Outdated"] = {
+                ["TabAttributes"] = {
+                    ["DisplayTitle"] = '<font color="rgb(255,166,0)">⚠</font>' .. RichTextGradientColor(" SCRIPT ISN'T TESTED FOR THIS GAME VERSION ",{Color3.fromRGB(255, 166, 0), Color3.fromRGB(243, 227, 0)}) .. '<font color="rgb(243, 227, 0)">⚠</font>',
+                    ["LayoutOrder"] = -2
+                }
+            }
+            ColoredPrint("The game has updated and it has been detected that the script has not been tested/updated for this version.\n All features have been disabled by default to prevent from you possibly getting detected.\n Use the features with caution or wait for a update from the script.", "warning", Color3.fromRGB(255, 166, 0))
+            for i,v in FeatureLoadout do
+                for i2,v2 in v do
+                    v2["Savable"] = false
+                    if v2["DefaultInstanceValue"] == true and i ~= "Outdated" and i ~= "ExploitFunctions" then
+                        v2["DefaultInstanceValue"] = false
+                    end
+                end
             end
         end
     end
+end
+
+if not (game.GameId == 6331902150 or game.GameId == 7464167604) then
+    FeatureLoadout["Unofficial"] = {
+          ["TabAttributes"] = {
+            ["DisplayTitle"] = '<font color="rgb(255,166,0)">⚠</font>' .. RichTextGradientColor(" SOME FEATURES MAY NOT WORK HERE ",{Color3.fromRGB(255, 166, 0), Color3.fromRGB(243, 227, 0)}) .. '<font color="rgb(243, 227, 0)">⚠</font>',
+            ["LayoutOrder"] = -1
+        }
+    }
+    ColoredPrint("This is not the official game which means some of the features may not work as expected.", "warning", Color3.fromRGB(255, 166, 0))
 end
 
 FeatureLoadout["ExploitFunctions"]["TabAttributes"]["DisplayTitle"] = string.format(
@@ -1171,7 +1295,6 @@ LocalPlayer.CharacterAdded:Connect(function(Character)
     LocalHead = Character and Character:FindFirstChild("Head") or Character:WaitForChild("Head",2)
     LocalRoot = (LocalHumanoid and LocalHumanoid.RootPart) or Character:FindFirstChild("HumanoidRootPart") or Character:WaitForChild("HumanoidRootPart",2)
     SpeedMultipliers = Character:FindFirstChild("SpeedMultipliers") or Character:WaitForChild("SpeedMultipliers", 5)
-    warn("SpeedMultipliers: " .. tostring(SpeedMultipliers))
     if SpeedMultipliers ~= nil and typeof(SpeedMultipliers) == "Instance" then
         SpeedMultipliers.ChildAdded:Connect(function(Child)
             if not Child:IsA("NumberValue") or Child.Name == "Sprinting"  then
@@ -1292,34 +1415,36 @@ for TabName, TabContents in FeatureLoadout do
         Folder:SetAttribute(Attribute, Value)
     end
     for SettingName, SettingData in TabContents do
-        if SettingName == "TabAttributes" then
-            continue
-        end
-        local NewInstance = Instance.new(SettingData.InstanceType)
-        NewInstance.Name = SettingName
-        NewInstance.Value = SettingData.DefaultInstanceValue
-        if SettingData["Savable"] and FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] then
-            local TableData = HttpService:JSONDecode(ReturnData("Data.txt", true))
-            if TableData[SettingName] ~= nil then
-                NewInstance.Value = TableData[SettingName]
+        task.spawn(function()
+            if SettingName == "TabAttributes" then
+                return
             end
-            NewInstance:GetPropertyChangedSignal("Value"):Connect(function()
-                local TableData2 = HttpService:JSONDecode(ReturnData("Data.txt", true))
-                TableData2[SettingName] = SettingData.DefaultInstanceValue ~= NewInstance.Value and NewInstance.Value or nil
-                ChangeData("Data.txt", HttpService:JSONEncode(TableData2), true)
-            end)
-        elseif not FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] and SettingData["Savable"] and not WarnedAboutFilesCompatability then
-            WarnedAboutFilesCompatability = true
-            ColoredPrint("Failed to load a savable feature.\nIf this bothers you then you should use a different executor that supports 'writefile' and 'readfile'", "info", Color3.new(1,0.25,0))
-        end
-        NewInstance:SetAttribute("DisplayDescription",SettingData.DisplayDescription)
-        NewInstance:SetAttribute("DisplayTitle",SettingData.DisplayTitle)
-        NewInstance:SetAttribute("LayoutOrder",SettingData.LayoutOrder)
-        FeatureLoadout[TabName][SettingName]["Instance"] = NewInstance
-        for ExtraDataIndex, ExtraDataValue in SettingData.ExtraData do
-            NewInstance:SetAttribute(ExtraDataIndex, ExtraDataValue)
-        end
-        NewInstance.Parent = Folder
+            local NewInstance = Instance.new(SettingData.InstanceType)
+            NewInstance.Name = SettingName
+            NewInstance.Value = SettingData.DefaultInstanceValue
+            if SettingData["Savable"] and FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] then
+                local TableData = HttpService:JSONDecode(ReturnData("Data.txt", true))
+                if TableData[SettingName] ~= nil then
+                    NewInstance.Value = TableData[SettingName]
+                end
+                NewInstance:GetPropertyChangedSignal("Value"):Connect(function()
+                    local TableData2 = HttpService:JSONDecode(ReturnData("Data.txt", true))
+                    TableData2[SettingName] = SettingData.DefaultInstanceValue ~= NewInstance.Value and NewInstance.Value or nil
+                    ChangeData("Data.txt", HttpService:JSONEncode(TableData2), true)
+                end)
+            elseif not FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] and SettingData["Savable"] and not WarnedAboutFilesCompatability then
+                WarnedAboutFilesCompatability = true
+                ColoredPrint("Failed to load a savable feature.\nIf this bothers you then you should use a different executor that supports 'writefile' and 'readfile'", "info", Color3.new(1,0.25,0))
+            end
+            NewInstance:SetAttribute("DisplayDescription",SettingData.DisplayDescription)
+            NewInstance:SetAttribute("DisplayTitle",SettingData.DisplayTitle)
+            NewInstance:SetAttribute("LayoutOrder",SettingData.LayoutOrder)
+            FeatureLoadout[TabName][SettingName]["Instance"] = NewInstance
+            for ExtraDataIndex, ExtraDataValue in SettingData.ExtraData do
+                NewInstance:SetAttribute(ExtraDataIndex, ExtraDataValue)
+            end
+            NewInstance.Parent = Folder
+        end)
     end
 end
 
@@ -1399,7 +1524,10 @@ workspace:WaitForChild("Map",20):WaitForChild("Ingame",20).ChildAdded:Connect(fu
         if KillerDoorsFolder then
             for i,v in KillerDoorsFolder:GetChildren() do
                 v.Color = Color
-                v.CanCollide = not Value
+                if v:GetAttribute("OriginalCanCollide") == nil then
+                    v:SetAttribute("OriginalCanCollide", v.CanCollide)
+                end
+                v.CanCollide = v:GetAttribute("OriginalCanCollide") ~= false and not Value or false
                 if KillerCollisions then
                     local Params = OverlapParams.new()
                     Params.FilterType = Enum.RaycastFilterType.Include
@@ -1462,30 +1590,46 @@ ThreadManager:Start("FeatureHandler", function()
         end
     end
 
-    if GameMap then
-        local PlayersFolder = {table.unpack(workspace.Players.Killers:GetChildren()),table.unpack(workspace.Players.Survivors:GetChildren())}
+    if GameMap and GameMap.Parent then
+        local Tools = GameMap.Parent:QueryDescendants("#Map > Tool")
+        local DroppedTools = GameMap.Parent.Parent:QueryDescendants("Folder > Tool")
+        task.spawn(function()
+            if FeatureLoadout["Automation"]["AutoPickup"]["Instance"] and FeatureLoadout["Automation"]["AutoPickup"]["Instance"].Value and LocalCharacter and LocalCharacter.Parent.Name == "Survivors" then
+                for i,v in table.move(Tools,1,#Tools,#DroppedTools+1,DroppedTools) do
+                    CreateDynamicHighlight(FeatureLoadout["Visuals"]["ItemsESP"]["Instance"].Value, v, v:FindFirstChildWhichIsA("BasePart"), {
+                        ["MaxDistance"] = 100,
+                        ["MinDistance"] = 10,
+                        ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["ItemsColor"]["Instance"].Value]
+                    })
+                    if v:IsA("Tool") and not LocalCharacter:FindFirstChild(v.Name) and not LocalPlayer:FindFirstChildOfClass("Backpack"):FindFirstChild(v.Name) and not v:GetAttribute("JustDropped") then
+                        local ProximityPrompt = v:FindFirstChildWhichIsA("ProximityPrompt",true)
+                        local Param = OverlapParams.new()
+                        Param.FilterType = Enum.RaycastFilterType.Include
+                        Param.FilterDescendantsInstances = {v}
+                        local Result = workspace:GetPartBoundsInRadius(LocalRoot.Position, 4.5, Param)
+                        if LocalRoot and #Result > 0 and ProximityPrompt then
+                            ProximityPrompt:InputHoldBegin()
+                            ProximityPrompt:InputHoldEnd()
+                        end
+                    end
+                end
+            end
+        end)
         for i,v in GameMap:GetChildren() do
             if v.Name == "Generator" then
                 if FeatureLoadout["Visuals"]["GeneratorsCheck"]["Instance"].Value == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value == 100 then
                     CreateDynamicHighlight(false, v)
                 elseif v:FindFirstChild("Progress") then
-                    CreateDynamicHighlight(FeatureLoadout["Visuals"]["GeneratorsESP"]["Instance"].Value, v, v.Main, {
+                    CreateDynamicHighlight(FeatureLoadout["Visuals"]["GeneratorsESP"]["Instance"].Value, v, v:FindFirstChild("Main") or v:WaitForChild("Main"), {
                         ["MaxDistance"] = 100,
                         ["MinDistance"] = 10,
                         ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["GeneratorsColor"]["Instance"].Value]
                     })
                 end
-            elseif v:IsA("Tool") then
-                CreateDynamicHighlight(FeatureLoadout["Visuals"]["ItemsESP"]["Instance"].Value, v, v:FindFirstChildWhichIsA("BasePart"), {
-                    ["MaxDistance"] = 100,
-                    ["MinDistance"] = 10,
-                    ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["ItemsColor"]["Instance"].Value]
-                })
             end
         end
-        local PlayersFolder = {table.unpack(workspace.Players.Killers:GetChildren()),table.unpack(workspace.Players.Survivors:GetChildren())}
-        for i,v in pairs(PlayersFolder) do
-            if v ~= LocalPlayer.Character and Players:GetPlayerFromCharacter(v) then
+        for i,v in workspace.Players:QueryDescendants("#Killers > Instance,#Survivors > Instance") do
+            if v ~= LocalPlayer.Character and Players:GetPlayerFromCharacter(v) ~= nil then
                 CreateDynamicHighlight(FeatureLoadout["Visuals"][v.Parent.Name.."ESP"].Instance.Value, v, v:FindFirstChild("HumanoidRootPart"), {
                     ["MaxDistance"] = 100,
                     ["MinDistance"] = 5,
@@ -1619,12 +1763,42 @@ RoundEvent.Event:Connect(function(Data)
     end
 end)
 
+workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(function()
+    for i,v in workspace:QueryDescendants("Highlight[$Dynamic]") do
+        for i,v in v:QueryDescendants("Tween") do v:Cancel() end
+        v.FillTransparency = 0.9
+        v.OutlineTransparency = 0.9
+    end
+end)
+
+if workspace.Map:FindFirstChild("Ingame") then
+    workspace.Map.Ingame.ChildAdded:Connect(function(Child)
+        if Child:IsA("Tool") then
+            Child:SetAttribute("JustDropped", true)
+            task.delay(2, function()
+                if Child then
+                    Child:SetAttribute("JustDropped", nil)
+                end
+            end)
+        end
+    end)
+end
+
+local Graf2 = workspace:FindFirstChild("Graf2",true)
+if Graf2 and math.round(Graf2.Position.X) == -3600 and Graf2:FindFirstChildWhichIsA("ImageLabel",true) then
+    Graf2.Position = Vector3.new(-3600, 19.25, 232.5)
+    Graf2.Size = Vector3.new(4.25, 1.5, 0.1)
+    Graf2.Rotation = Vector3.new(7, 90, 0)
+    Graf2:FindFirstChildWhichIsA("ImageLabel",true).Image = "rbxassetid://86461599034861"
+    Graf2:FindFirstChildWhichIsA("ImageLabel",true).ImageTransparency = 0.2
+end
+
 local BaseTweenInfo = TweenInfo.new(0.25)
 local MenuData = {
     ["SidebarMenus"] = {},
     ["Sidebars"] = {
         ["Sidebar"] = MainUI.Sidebar,
-        ["Bottombar"] = MainUI.Sidebar.Bottombar
+        ["Bottombar"] = MainUI.Sidebar:FindFirstChild("Bottombar") or nil
     }
 }
 MenuData.__index = MenuData
@@ -1658,7 +1832,7 @@ function MenuData.ToggleMenu(UIData, p24)
         MenuData.TogglingMenus = true
         PlaySound("select")
         local Visible = UIData.Menu.Visible
-        for i,v in SideBar:QueryDescendants("#Buttons > Frame:not(#Credits):not(#Spectate):not(#Plus)") do
+        for i,v in SideBar:QueryDescendants("#Buttons > Frame:not(#Credits):not(#Spectate):not(#Plus):not(#TesterUi)") do
             v.Button.Interactable = false
             task.delay(0.3, function()
                 v.Button.Interactable = true
@@ -2207,7 +2381,9 @@ if PlusButton:IsA("Frame") then
                     for i,v in MainUI:GetChildren() do
                         if v ~= PlusMenu and (v.Name):find("Screen") then
                             local ButtonName = v.Name:gsub("Screen","")
-                            local Button = Buttons:FindFirstChild(ButtonName) or SideBar.Bottombar.Buttons:FindFirstChild(ButtonName) or nil
+                            local Button = Buttons:FindFirstChild(ButtonName) or (SideBar:FindFirstChild("Bottombar") and SideBar.Bottombar.Buttons:FindFirstChild(ButtonName)) or nil
+                            if not Button and ButtonName ~= "Mod" then continue end
+                            local Event = v:FindFirstChildOfClass("BindableEvent")
                             if MenuData.SidebarMenus[ButtonName] == nil then
                                 if Button then
                                     Button.Button.MouseButton1Click:Connect(function()
@@ -2223,10 +2399,10 @@ if PlusButton:IsA("Frame") then
                                     end)
                                 end
                                 MenuData.SidebarMenus[ButtonName] = {
-                                    ["Toggled"] = MainUI:FindFirstChild(v.Name):FindFirstChildOfClass("BindableEvent").Event,
+                                    ["Toggled"] = Event and Event.Event or nil,
                                     ["SidebarButton"] = Buttons:FindFirstChild(ButtonName) or nil,
                                     ["Menu"] = MainUI:FindFirstChild(v.Name),
-                                    ["__toggleEvent"] = MainUI:FindFirstChild(v.Name):FindFirstChildOfClass("BindableEvent")
+                                    ["__toggleEvent"] = Event or nil
                                 }
                             end
                         end
@@ -2279,6 +2455,9 @@ local function UICheck()
         Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
         PlusMenu.SettingsContainer.ImageTransparency = 0
         PlusMenu.SettingsContainer.Contents.ScrollBarImageTransparency = 0
+        if SideBar:IsA("ImageLabel") then
+            SideBar.ImageTransparency = 0
+        end
         for i,v in PlusMenu.SettingsContainer.Contents:GetChildren() do
             if v:IsA("ImageLabel") then
                 v.ImageTransparency = 0
@@ -2294,6 +2473,9 @@ local function UICheck()
         Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
         PlusMenu.SettingsContainer.ImageTransparency = 0.3
         PlusMenu.SettingsContainer.Contents.ScrollBarImageTransparency = 0.45
+        if SideBar:IsA("ImageLabel") then
+            SideBar.ImageTransparency = 1
+        end
         for i,v in PlusMenu.SettingsContainer.Contents:GetChildren() do
             if v:IsA("ImageLabel") then
                 v.ImageTransparency = 0.3
@@ -2306,7 +2488,7 @@ local function UICheck()
             end
         end
     end
-    for i,v in SideBar:QueryDescendants("#Money, #Bottombar, #Buttons > Frame:not(#Credits)") do
+    for i,v in SideBar:QueryDescendants("#Money, #Bottombar, #Buttons > Frame:not(#Credits):not(#TesterUi)") do
         v.Visible = Status
     end
     PlusButton.Visible = true
