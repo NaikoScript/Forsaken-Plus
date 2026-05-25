@@ -4,15 +4,6 @@ if workspace.DistributedGameTime < 3 then
 	task.wait(3 - workspace.DistributedGameTime)
 end
 
-game.StarterGui:SetCore("SendNotification",
-    {
-        Title = "IMPORTANT",
-        Text = "Forsaken plus only works in forsaken clone games for the time being because of the new ui in forsaken",
-        Icon = "rbxasset://textures/DevConsole/Warning.png",
-        Duration = 25
-    }
-)
-
 if game.CoreGui:FindFirstChild("Plus") then
     return warn("Script already running")
 elseif game.GameId == 6331902150 or game.GameId == 7464167604 or workspace:GetAttribute("ServerType") then
@@ -28,7 +19,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.1"
+local Version = "1.2"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -44,8 +35,10 @@ local PlusFolderSettings = Instance.new("Folder")
 local SideBar = MainUI:FindFirstChild("Sidebar") or MainUI:WaitForChild("Sidebar", 20)
 local Buttons = SideBar:FindFirstChild("Buttons") or SideBar:WaitForChild("Buttons", 20)
 local SettingsButton = Buttons:FindFirstChild("Settings") or Buttons:WaitForChild("Settings", 20)
-local PlusButton = SettingsButton and SettingsButton:Clone()
-local PulloutFramePlus = PlusButton and PlusButton:FindFirstChild("PulloutHolder") and PlusButton.PulloutHolder:FindFirstChild("PulloutFrame")
+local SidePlusButton = SettingsButton and SettingsButton:Clone()
+local PlusButton = SidePlusButton and SidePlusButton:FindFirstChild("Button") or nil
+local PulloutFramePlus = SidePlusButton and SidePlusButton:FindFirstChild("PulloutHolder") and SidePlusButton.PulloutHolder:FindFirstChild("PulloutFrame")
+local NewUIVersion = not PulloutFramePlus
 local SettingsMenu = MainUI:FindFirstChild("SettingsScreen") or MainUI:WaitForChild("SettingsScreen", 20)
 local PlusMenu = SettingsMenu and SettingsMenu:Clone()
 local KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
@@ -62,11 +55,12 @@ local Debris = game:GetService("Debris")
 local Network = ReplicatedStorage:FindFirstChild("Modules") and (ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) and ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true):FindFirstChild("Network")) or ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) or nil
 local GameMap = workspace:FindFirstChild("Map") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame"):FindFirstChild("Map") or nil
 local RoundEvent = Instance.new("BindableEvent")
+local UIScale = Instance.new("UIScale")
 local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,true,false
 local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-05-17"
+local GameVersionForScript = "2026-05-25"
 local CurrentGameVersion = MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -197,7 +191,7 @@ local FeatureLoadout; FeatureLoadout = {
         ["Invincible"] = {
             ["DisplayDescription"] = "Makes you invisible & god mode (you can still use abilities normally)",
             ["DisplayTitle"] = "Invincible",
-            ["LayoutOrder"] = 2,
+            ["LayoutOrder"] = 1,
             ["Savable"] = false,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
@@ -208,6 +202,10 @@ local FeatureLoadout; FeatureLoadout = {
                 if workspace:GetAttribute("Invincible") == nil then
                     workspace:SetAttribute("Invincible", Value)
                     self.Instance.Value = Value
+                    if Value then
+                        FeatureLoadout["Features"]["DisableToxicTrails"].Instance.Value = true
+                        FeatureLoadout["Features"]["DisableFootprints"].Instance.Value = true
+                    end
                     task.delay(1.5, function()
                         workspace:SetAttribute("Invincible",nil)
                     end)
@@ -220,7 +218,7 @@ local FeatureLoadout; FeatureLoadout = {
         ["DisableKillerWalls"] = {
             ["DisplayDescription"] = "Disables All Killer Walls (Red Walls)",
             ["DisplayTitle"] = "Disable Killer Walls",
-            ["LayoutOrder"] = 3,
+            ["LayoutOrder"] = 2,
             ["Savable"] = false,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
@@ -259,29 +257,66 @@ local FeatureLoadout; FeatureLoadout = {
         ["DisableToxicTrails"] = {
             ["DisplayDescription"] = "Disables damaging trails for john doe",
             ["DisplayTitle"] = "Disable John Doe's Trails",
-            ["LayoutOrder"] = 4,
-            ["Savable"] = false,
+            ["LayoutOrder"] = 3,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
-            ["ExtraData"] = {
-                ["Requirement"] = true
-            },
+            ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
-                -- No functionality yet
+                for i,v in workspace.Map.Ingame:GetChildren() do
+                    if v:IsA("Folder") and (v.Name):find("JohnDoeTrail") then
+                        for i,v2 in v:GetChildren() do
+                            if v2:IsA("BasePart") then
+                                v2.CanTouch = not Value
+                            end
+                        end
+                    end
+                end
+            end
+        },
+        ["DisableFootprints"] = {
+            ["DisplayDescription"] = "Disables footprints made by john doe",
+            ["DisplayTitle"] = "Disable John Doe's Footprints",
+            ["LayoutOrder"] = 4,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                for i,v in workspace.Map.Ingame:GetChildren() do
+                    if v:IsA("Folder") and (v.Name):find("Shadows") then
+                        for i,v2 in v:GetChildren() do
+                            if v2:IsA("BasePart") then
+                                v2.CanTouch = not Value
+                            end
+                        end
+                        if not v:GetAttribute("Checked") then
+                            v:SetAttribute("Checked", true)
+                            v.ChildAdded:Connect(function(GrandChild)
+                                if GrandChild:IsA("BasePart") then
+                                    GrandChild.CanTouch = not FeatureLoadout["Features"]["DisableFootprints"]["Instance"].Value
+                                end
+                            end)
+                        end
+                    end
+                end
             end
         },
         ["SmallerSpikeCollisions"] = {
             ["DisplayDescription"] = "Makes spike collisions smaller for john doe's ability",
             ["DisplayTitle"] = "Smaller Spike Collisions",
             ["LayoutOrder"] = 5,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
-            ["ExtraData"] = {
-                ["Requirement"] = true
-            },
+            ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
-                -- No functionality yet
+                for i,v in workspace.Map.Ingame:GetChildren() do
+                    if v.Name == "SpikeCollision" then
+                        v.Size = Value and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
+                        v.Shape = Value and Enum.PartType.Cylinder or Enum.PartType.Block
+                    end
+                end
             end
         },
         ["EnableJumping"] = {
@@ -291,9 +326,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["Savable"] = false,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
-            ["ExtraData"] = {
-                ["Requirement"] = true
-            },
+            ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
                 HandleAllowJumping(Value)
             end
@@ -736,7 +769,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["ScriptFunction"] = function(self, Value)
                 if Value and not workspace:GetAttribute("LoadingTeleport") then
                     workspace:SetAttribute("LoadingTeleport",true)
-                    local A =workspace:FindFirstChild("Sounds") and workspace.Sounds:ClearAllChildren()
+                    local A = workspace:FindFirstChild("Sounds") and workspace.Sounds:ClearAllChildren()
                     local B = workspace:FindFirstChild("Themes") and workspace.Themes:ClearAllChildren()
                     PlaySound("deadJOutIaw_Nova",{["TimePosition"] = 0.4})
                     task.wait(0.25)
@@ -758,26 +791,41 @@ local FeatureLoadout; FeatureLoadout = {
 PlusFolderSettings.Name = "Plus"
 PlusFolderSettings.Parent = PlayerData
 
-PlusButton.Name = "Plus"
-PlusButton.Parent = Buttons
-PlusButton.LayoutOrder = 5
-PlusButton.Button.ImageColor3 = Color3.fromRGB(0, 170, 127)
-PlusButton.Icon.ImageColor3 = Color3.fromRGB(0, 170, 127)
-PlusButton.Icon.Image = "rbxassetid://118860705115878"
-PlusButton.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
-PlusButton.Inverted.ImageTransparency = 1
-PlusButton.InvertedIcon.ImageColor3 = Color3.fromRGB(105, 255, 212)
-PlusButton.InvertedIcon.Image = "rbxassetid://85001556314176"
-PlusButton.InvertedIcon.ImageTransparency = 1
-PulloutFramePlus.Title.TextColor3 = Color3.fromRGB(0, 170, 127)
-PulloutFramePlus.Position = UDim2.fromScale(0,0.5)
-PulloutFramePlus.ArtAsset.ImageColor3 = Color3.fromRGB(0, 170, 127)
-PulloutFramePlus.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
-PulloutFramePlus.Inverted.ImageTransparency = 1
+SidePlusButton.Name = "Plus"
+SidePlusButton.Parent = Buttons
+SidePlusButton.LayoutOrder = SettingsButton.LayoutOrder - 1
+if NewUIVersion then
+    PlusButton:FindFirstChild("Icon").ImageColor3 = Color3.fromRGB(0, 170, 127)
+    PlusButton:FindFirstChild("Icon").Image = "rbxassetid://118860705115878"
+    PlusButton:FindFirstChild("Text"):FindFirstChild("Name").Text = "Plus"
+    PlusButton:FindFirstChild("Line").ImageColor3 = Color3.fromRGB(0, 170, 127)
+    PlusButton:FindFirstChild("Highlight").ImageColor3 = Color3.fromRGB(0, 170, 127)
+    PlusButton:FindFirstChild("Text"):FindFirstChild("Name").TextColor3 = Color3.fromRGB(0, 170, 127)
+    for i,v in PlusButton:FindFirstChild("Text"):GetChildren() do if v:IsA("ImageLabel") then v.ImageColor3 = Color3.fromRGB(0, 17, 13) end end
+    PlusButton:FindFirstChild("BG").ImageColor3 = Color3.fromRGB(0, 17, 13)
+    PlusButton:FindFirstChild("Grunge").ImageColor3 = Color3.fromRGB(0, 37, 24)
+    PlusButton:FindFirstChild("Grunge").ImageTransparency = 0.2
+    PlusButton:FindFirstChild("GrungeMain").ImageTransparency = 1
+    UIScale.Parent = PlusButton
+else
+    SidePlusButton.Button.ImageColor3 = Color3.fromRGB(0, 170, 127)
+    SidePlusButton.Icon.ImageColor3 = Color3.fromRGB(0, 170, 127)
+    SidePlusButton.Icon.Image = "rbxassetid://118860705115878"
+    SidePlusButton.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
+    SidePlusButton.Inverted.ImageTransparency = 1
+    SidePlusButton.InvertedIcon.ImageColor3 = Color3.fromRGB(105, 255, 212)
+    SidePlusButton.InvertedIcon.Image = "rbxassetid://85001556314176"
+    SidePlusButton.InvertedIcon.ImageTransparency = 1
+    PulloutFramePlus.Title.TextColor3 = Color3.fromRGB(0, 170, 127)
+    PulloutFramePlus.Position = UDim2.fromScale(0,0.5)
+    PulloutFramePlus.ArtAsset.ImageColor3 = Color3.fromRGB(0, 170, 127)
+    PulloutFramePlus.Inverted.ImageColor3 = Color3.fromRGB(105, 255, 212)
+    PulloutFramePlus.Inverted.ImageTransparency = 1
+end
 
 local Arrow = game:GetService("ReplicatedStorage"):FindFirstChild("DropdownArrow",true):Clone()
 Arrow.ImageColor3 = Color3.fromRGB(0, 170, 127)
-Arrow.Parent = PlusButton
+Arrow.Parent = SidePlusButton
 Arrow.Position = UDim2.fromScale(1.6,0.5)
 Arrow.AnchorPoint = Vector2.new(0.5,0.5)
 Arrow.Rotation = 90
@@ -792,7 +840,6 @@ PlusMenu.Size = UDim2.new(1,-20,0,0)
 PlusMenu.SettingsContainer.ImageColor3 = Color3.fromRGB(0, 170, 127)
 PlusMenu.SettingsContainer.Contents.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 127)
 PlusMenu.ZIndex += 25
-PlusMenu.Event:Destroy()
 for i,v in PlusMenu.SettingsContainer.Contents:QueryDescendants("Frame,ImageLabel") do v:Destroy() end
 
 -- Functions --
@@ -909,7 +956,7 @@ local function ColoredPrint(Text, Icon, Color)
     end)
 end
 
-function PlaySound(SoundName,Settings)
+function PlaySound(SoundName,Settings,KeepPlaying)
     local Sound = typeof(SoundName) == "string" and game:GetService("ReplicatedStorage").Assets.Sounds:FindFirstChild(SoundName,true) or (typeof(SoundName) == "Instance" and SoundName) or nil
     if Sound then
         task.spawn(function()
@@ -920,12 +967,97 @@ function PlaySound(SoundName,Settings)
                 end
             end
             Sound.Parent = workspace:FindFirstChild("Sounds") or workspace
-            Sound.Playing = true
-            Debris:AddItem(Sound, Sound.TimeLength + 0.1)
+            if KeepPlaying then
+                Sound.Playing = true
+            else
+                Sound:Play()
+            end
+            Debris:AddItem(Sound, Sound.TimeLength + 1)
         end)
     else
         warn("Failed to play sound: ".. tostring(SoundName))
     end
+end
+
+local function SetButtonState(Active)
+    task.spawn(function()
+        local u4 = {}
+        local v5 = {
+            ["Active"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+            },
+            ["Inactive"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 17, 13)
+            }
+        }
+        u4.BG = v5
+        local v6 = {
+            ["Active"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+            },
+            ["Inactive"] = {
+                ["ImageColor3"] = Color3.fromRGB(80, 80, 80)
+            }
+        }
+        u4.GrungeMain = v6
+        local v7 = {
+            ["Active"] = {
+                ["ImageTransparency"] = 0,
+                ["ImageColor3"] = Color3.fromRGB(0, 229, 171)
+            },
+            ["Inactive"] = {
+                ["ImageTransparency"] = 0.2,
+                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+            }
+        }
+        u4.Grunge = v7
+        local v8 = {
+            ["Active"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+            },
+            ["Inactive"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+            }
+        }
+        u4.Highlight = v8
+        local v9 = {
+            ["Active"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+            },
+            ["Inactive"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+            }
+        }
+        u4.Icon = v9
+        local v10 = {
+            ["Active"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 37, 24)
+            },
+            ["Inactive"] = {
+                ["ImageColor3"] = Color3.fromRGB(0, 170, 127)
+            }
+        }
+        u4.Line = v10
+        local v26 = PlusButton:FindFirstChild("Text")
+        for _, v27 in v26 and v26:GetChildren() or {} do
+            if v27:IsA("TextLabel") then
+                TweenService:Create(v27, TweenInfo.new(0.25), {
+                    ["TextColor3"] = Active and Color3.fromRGB(0, 37, 24) or Color3.fromRGB(0, 170, 127)
+                }):Play()
+            elseif v27:IsA("ImageLabel") then
+                TweenService:Create(v27, TweenInfo.new(0.25), {
+                    ["ImageColor3"] = Active and Color3.fromRGB(0, 170, 127) or Color3.fromRGB(0, 17, 13)
+                }):Play()
+            end
+        end
+        local v28 = Active and "Active" or "Inactive"
+        for v29, v30 in u4 do
+            local v31 = PlusButton:FindFirstChild(v29)
+            if v31 then
+                TweenService:Create(v31, TweenInfo.new(0.25), v30[v28]):Play()
+            end
+        end
+    end)
 end
 
 local function GetFunction(...)
@@ -969,7 +1101,7 @@ local function CheckDistance(Highlight, TargetRoot, Settings)
             Distance = 0
         end
         if Distance >= Settings["MinDistance"] then
-            local TransparencyAmount = math.clamp(1 - math.clamp((Distance - Settings["MinDistance"]) / (Settings["MaxDistance"] - Settings["MinDistance"]), 0, 1), 0.35, 1)
+            local TransparencyAmount = math.clamp(1 - math.clamp((Distance - Settings["MinDistance"]) / (Settings["MaxDistance"] - Settings["MinDistance"]), 0, 1), 0.45, 1)
             local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount, OutlineTransparency = TransparencyAmount < 0.8 and TransparencyAmount - 0.2 or TransparencyAmount})
             Tween.Parent = Highlight
             Tween:Play()
@@ -992,7 +1124,7 @@ local function CreateDynamicHighlight(Enabled,ItemInstance,TargetRoot,Settings)
             Highlight.Name = HttpService:GenerateGUID(false)
             Highlight.FillColor = Settings.Color
             local H, S, V = Settings.Color:ToHSV()
-            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 0.75)
+            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 0.65)
             Highlight:SetAttribute("Dynamic",true)
             Highlight.Parent = ItemInstance
             Highlight.Adornee = ItemInstance
@@ -1003,7 +1135,7 @@ local function CreateDynamicHighlight(Enabled,ItemInstance,TargetRoot,Settings)
             Highlight = Highlight[1]
             Highlight.FillColor = Settings.Color
             local H, S, V = Settings.Color:ToHSV()
-            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 0.75)
+            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 0.65)
             CheckDistance(Highlight, TargetRoot, Settings)
         end
     elseif Highlight[1] then
@@ -1273,7 +1405,7 @@ FeatureLoadout["ExploitFunctions"]["TabAttributes"]["DisplayTitle"] = string.for
     RichTextGradientColor("Naiko Exploits",{Color3.fromRGB(0, 255, 128),Color3.fromRGB(0, 102, 255)}),
     RichTextGradientColor("Nikoleto Scripts",{Color3.fromRGB(140, 0, 255), Color3.fromRGB(215, 0, 243)}),
     RichTextGradientColor("V"..Version,{Color3.fromRGB(87, 160, 255),Color3.fromRGB(0, 132, 255)})
-)
+) -- Tryna edit something here?? i can see that... you ain taking no credit you know..
 local ThreadManager = {Threads = {}}
 function ThreadManager:Start(Name,Function,Interval)
     if ThreadManager.Threads[Name] then
@@ -1287,9 +1419,10 @@ function ThreadManager:Start(Name,Function,Interval)
     end)
 end
 
-PlaySound("deadJOutIaw_Nova",{["TimePosition"] = 5,["Volume"] = 0.0001})
+PlaySound("deadJOutIaw_Nova",{["TimePosition"] = 5,["Volume"] = 0.0001},true)
 
 LocalPlayer.CharacterAdded:Connect(function(Character)
+    SetButtonState(false)
     LocalCharacter = Character
     LocalHumanoid = Character and Character:FindFirstChildOfClass("Humanoid") or Character:WaitForChild("Humanoid",2) and Character:FindFirstChildOfClass("Humanoid")
     LocalHead = Character and Character:FindFirstChild("Head") or Character:WaitForChild("Head",2)
@@ -1397,7 +1530,7 @@ if UserType < 3 then
     Arrow.Visible = true
     local MovingTween = TweenService:Create(Arrow, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Position = UDim2.fromScale(1.4, 0.5)})
     MovingTween:Play()
-    PlusButton.Button.MouseEnter:Wait()
+    SidePlusButton.Button.MouseEnter:Wait()
     local DisappearTween = TweenService:Create(Arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.fromScale(1.6, 0.5),Size = UDim2.fromScale(0.2, 0.2),ImageTransparency = 1})
     MovingTween:Pause()
     MovingTween:Cancel()
@@ -1608,8 +1741,13 @@ ThreadManager:Start("FeatureHandler", function()
                         Param.FilterDescendantsInstances = {v}
                         local Result = workspace:GetPartBoundsInRadius(LocalRoot.Position, 4.5, Param)
                         if LocalRoot and #Result > 0 and ProximityPrompt then
-                            ProximityPrompt:InputHoldBegin()
-                            ProximityPrompt:InputHoldEnd()
+                            local FireProximtyPrompt = GetFunction(fireproximityprompt, fire_proximity_prompt)
+                            if FireProximtyPrompt then
+                                FireProximtyPrompt(ProximityPrompt)
+                            else
+                                ProximityPrompt:InputHoldBegin()
+                                ProximityPrompt:InputHoldEnd()
+                            end
                         end
                     end
                 end
@@ -1775,11 +1913,36 @@ if workspace.Map:FindFirstChild("Ingame") then
     workspace.Map.Ingame.ChildAdded:Connect(function(Child)
         if Child:IsA("Tool") then
             Child:SetAttribute("JustDropped", true)
-            task.delay(2, function()
+            task.delay(1.5, function()
                 if Child then
                     Child:SetAttribute("JustDropped", nil)
                 end
             end)
+        elseif Child:IsA("Folder") and (Child.Name):find("JohnDoeTrail") then
+            task.wait()
+            for i,v in Child:GetChildren() do
+                if v:IsA("BasePart") then
+                    v.CanTouch = not FeatureLoadout["Features"]["DisableToxicTrails"]["Instance"].Value
+                end
+            end
+        elseif Child:IsA("Folder") and (Child.Name):find("Shadows") then
+            task.wait()
+            for i,v in Child:GetChildren() do
+                if v:IsA("BasePart") then
+                    v.CanTouch = not FeatureLoadout["Features"]["DisableFootprints"]["Instance"].Value
+                end
+            end
+            if not Child:GetAttribute("Checked") then
+                Child:SetAttribute("Checked", true)
+                Child.ChildAdded:Connect(function(GrandChild)
+                    if GrandChild:IsA("BasePart") then
+                        GrandChild.CanTouch = not FeatureLoadout["Features"]["DisableFootprints"]["Instance"].Value
+                    end
+                end)
+            end
+        elseif Child.Name == "SpikeCollision" then
+            Child.Size = FeatureLoadout["Features"]["SmallerSpikeCollisions"]["Instance"].Value and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
+            Child.Shape = FeatureLoadout["Features"]["SmallerSpikeCollisions"]["Instance"].Value and Enum.PartType.Cylinder or Enum.PartType.Block
         end
     end)
 end
@@ -1794,90 +1957,191 @@ if Graf2 and math.round(Graf2.Position.X) == -3600 and Graf2:FindFirstChildWhich
 end
 
 local BaseTweenInfo = TweenInfo.new(0.25)
-local MenuData = {
-    ["SidebarMenus"] = {},
-    ["Sidebars"] = {
-        ["Sidebar"] = MainUI.Sidebar,
-        ["Bottombar"] = MainUI.Sidebar:FindFirstChild("Bottombar") or nil
-    }
-}
-MenuData.__index = MenuData
-function MenuData.CreateSidebarMenu(self, ButtonName, Menu, Bottom)
-    local Data = setmetatable({}, MenuData)
-    Data.Menu = Menu
-    Data.Menu.Visible = false
-    Data.Menu.Size = UDim2.fromScale()
-    Data.Menu.Parent = MainUI
-    Data.SidebarButton = MenuData.Sidebars[Bottom and "Bottombar" or "Sidebar"].Buttons:FindFirstChild(ButtonName)
-    local BindableEvent = Instance.new("BindableEvent")
-    BindableEvent.Parent = Data.Menu
-    Data.Toggled = BindableEvent.Event
-    Data.__toggleEvent = BindableEvent
-    for i,Descendant in pairs(Data.Menu:GetDescendants()) do
-        if Descendant:IsA("ScrollingFrame") then
-            Descendant:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                Descendant.ScrollBarThickness = Descendant.AbsoluteSize.X / 44
+local MenuData
+if NewUIVersion then
+    local Signal = require(game.ReplicatedStorage.Modules.Utilities.Signal)
+    MenuData = require(game:GetService("ReplicatedStorage").Systems.Player.UI.SidebarHandler)
+    MenuData.__index = MenuData
+
+    local UICreator = {}
+    UICreator.__index = UICreator
+    function UICreator.new(MenuName, MenuScreen)
+        local Metaverse = setmetatable({}, UICreator) -- roblox sigma metaverse when
+        Metaverse.Menu = MenuScreen:Clone()
+        Metaverse.Toggled = Signal.new()
+        Metaverse.Button = nil
+        Metaverse.MenuName = MenuName
+        Metaverse.Menu.Visible = false
+        Metaverse.Menu.Size = UDim2.fromScale()
+        Metaverse.Menu.Parent = MainUI
+        for i,v in Metaverse.Menu:QueryDescendants("ScrollingFrame") do
+            v:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                v.ScrollBarThickness = v.AbsoluteSize.X / 44
             end)
         end
+        return Metaverse
     end
-    self.SidebarMenus[ButtonName] = Data
-    return Data
-end
-function MenuData.ToggleMenu(UIData, p24)
-    if MenuData.TogglingMenus then
-        return
-    elseif MenuData.MenusHidden and UIData.SidebarButton then
-        return
-    elseif not (p24 and UIData.Menu.Visible) then
-        MenuData.TogglingMenus = true
-        PlaySound("select")
-        local Visible = UIData.Menu.Visible
-        for i,v in SideBar:QueryDescendants("#Buttons > Frame:not(#Credits):not(#Spectate):not(#Plus):not(#TesterUi)") do
-            v.Button.Interactable = false
-            task.delay(0.3, function()
-                v.Button.Interactable = true
-            end)
-        end
-        for i,Menu in pairs(MenuData.SidebarMenus) do
-            if Menu.Menu ~= UIData.Menu or Visible then
-                if Menu.Menu.Visible then
-                    Menu.__toggleEvent:Fire(false)
-                    
-                    TweenService:Create(Menu.Menu, BaseTweenInfo, {["Size"] = UDim2.new(1, -20, 0, 0)}):Play()
-                    if Menu.SidebarButton then
-                        TweenService:Create(Menu.SidebarButton.Inverted, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
-                        TweenService:Create(Menu.SidebarButton.InvertedIcon, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
-                        TweenService:Create(Menu.SidebarButton.PulloutHolder.PulloutFrame.Inverted, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
-                        TweenService:Create(Menu.SidebarButton.PulloutHolder.PulloutFrame.Title, BaseTweenInfo, {
-                            ["TextColor3"] = Menu.Menu.Name == "PlusScreen" and Color3.fromRGB(0, 170, 127) or Color3.new(1,1,1) 
-                        }):Play()
+    function UICreator.ToggleMenu(selfdata)
+        local DataSideBar = selfdata._sidebar
+        if DataSideBar.TogglingMenus then
+            return
+        elseif DataSideBar.MenusHidden and selfdata.SidebarButton then
+            return
+        elseif not (false and selfdata.Menu.Visible) then
+            DataSideBar.TogglingMenus = true
+            local VisibleUI = selfdata.Menu.Visible
+            PlaySound("select")
+            local SideBarMenu
+            for i, v in DataSideBar.SidebarMenus do
+                if v.Menu ~= selfdata.Menu or VisibleUI then
+                    if v.Menu ~= selfdata.Menu then
+                        if v.Menu.Visible then
+                            SideBarMenu = v
+                        end
                     end
-                    task.delay(0.25, function()
-                        Menu.Menu.Visible = false
-                    end)
+                    if v.Menu.Visible then
+                        v.Toggled:Fire(false)
+                        local UIModule = ReplicatedStorage.Systems.Player.UI.Menus:FindFirstChild(v.MenuName)
+                        local success, result = pcall(require, UIModule)
+                        if success and (result and result.OnTransitionState) then
+                            result.OnTransitionState(false)
+                        else
+                            TweenService:Create(v.Menu, BaseTweenInfo, {
+                                ["Size"] = UDim2.new(1, -20, 0, 0)
+                            }):Play()
+                            task.delay(0.25, function()
+                                v.Menu.Visible = false
+                            end)
+                        end
+                        SetButtonState(false)
+                        if v.Button then
+                            v.Button:SetAppearanceState(false)
+                        end
+                    end
+                end
+            end
+            task.delay(0.3 + (SideBarMenu and 0.125 or 0), function()
+                DataSideBar.TogglingMenus = nil
+            end)
+            if SideBarMenu then
+                task.wait(0.125)
+                if DataSideBar.MenusHidden then
+                    DataSideBar.TogglingMenus = nil
+                    return
+                end
+            end
+            if not VisibleUI then
+                selfdata.Toggled:Fire(true)
+                local UIModule = ReplicatedStorage.Systems.Player.UI.Menus:FindFirstChild(selfdata.MenuName)
+                local success, result = pcall(require, UIModule)
+                if success and (result and result.OnTransitionState) then
+                    result.OnTransitionState(true)
+                else
+                    selfdata.Menu.Visible = true
+                    TweenService:Create(selfdata.Menu, BaseTweenInfo, {
+                        ["Size"] = UDim2.new(1, -20, 1, -20)
+                    }):Play()
+                end
+                SetButtonState(true)
+                if selfdata.Button then
+                    selfdata.Button:SetAppearanceState(true)
                 end
             end
         end
-        task.delay(0.3, function()
-            MenuData.TogglingMenus = nil
+    end
+    function MenuData.CreateSidebarMenu(self, MenuName, MenuScreen)
+        local Data = UICreator.new(MenuName, MenuScreen)
+        Data._sidebar = self
+        Data.SidebarButton = MenuData.Sidebar.Buttons:FindFirstChild(MenuName)
+        task.delay(0, function()
+            Data.Button = MenuData.SidebarButtons[MenuName]
         end)
-        if MenuData.MenusHidden then
-            return
+        MenuData.SidebarMenus[MenuName] = Data
+        return Data
+    end
+else
+    MenuData = {
+        ["SidebarMenus"] = {},
+        ["Sidebars"] = {
+            ["Sidebar"] = MainUI.Sidebar,
+            ["Bottombar"] = MainUI.Sidebar:FindFirstChild("Bottombar") or nil
+        }
+    }
+    MenuData.__index = MenuData
+    function MenuData.CreateSidebarMenu(self, ButtonName, Menu, Bottom)
+        local Data = setmetatable({}, MenuData)
+        Data.Menu = Menu
+        Data.Menu.Visible = false
+        Data.Menu.Size = UDim2.fromScale()
+        Data.Menu.Parent = MainUI
+        Data.SidebarButton = MenuData.Sidebars[Bottom and "Bottombar" or "Sidebar"].Buttons:FindFirstChild(ButtonName)
+        local BindableEvent = Instance.new("BindableEvent")
+        BindableEvent.Parent = Data.Menu
+        Data.Toggled = BindableEvent.Event
+        Data.__toggleEvent = BindableEvent
+        for i,v in pairs(Data.Menu:QueryDescendants("ScrollingFrame")) do
+            v:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                v.ScrollBarThickness = v.AbsoluteSize.X / 44
+            end)
         end
-        if not Visible then
-            UIData.__toggleEvent:Fire(true)
-            UIData.Menu.Visible = true
-            TweenService:Create(UIData.Menu, BaseTweenInfo, {["Size"] = UDim2.new(1, -20, 1, -20)}):Play()
-            if UIData.SidebarButton then
-                TweenService:Create(UIData.SidebarButton.Inverted, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
-                TweenService:Create(UIData.SidebarButton.InvertedIcon, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
-                TweenService:Create(UIData.SidebarButton.PulloutHolder.PulloutFrame.Inverted, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
-                TweenService:Create(UIData.SidebarButton.PulloutHolder.PulloutFrame.Title, BaseTweenInfo, {["TextColor3"] = Color3.new()}):Play()
+        self.SidebarMenus[ButtonName] = Data
+        return Data
+    end
+    function MenuData.ToggleMenu(UIData, p24)
+        if MenuData.TogglingMenus then
+            return
+        elseif MenuData.MenusHidden and UIData.SidebarButton then
+            return
+        elseif not (p24 and UIData.Menu.Visible) then
+            MenuData.TogglingMenus = true
+            PlaySound("select")
+            local Visible = UIData.Menu.Visible
+            for i,v in SideBar:QueryDescendants("#Buttons > Frame:not(#Credits):not(#Spectate):not(#Plus):not(#TesterUi)") do
+                v.Button.Interactable = false
+                task.delay(0.3, function()
+                    v.Button.Interactable = true
+                end)
+            end
+            for i,Menu in pairs(MenuData.SidebarMenus) do
+                if Menu.Menu ~= UIData.Menu or Visible then
+                    if Menu.Menu.Visible then
+                        Menu.__toggleEvent:Fire(false)
+                        
+                        TweenService:Create(Menu.Menu, BaseTweenInfo, {["Size"] = UDim2.new(1, -20, 0, 0)}):Play()
+                        if Menu.SidebarButton then
+                            TweenService:Create(Menu.SidebarButton.Inverted, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
+                            TweenService:Create(Menu.SidebarButton.InvertedIcon, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
+                            TweenService:Create(Menu.SidebarButton.PulloutHolder.PulloutFrame.Inverted, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
+                            TweenService:Create(Menu.SidebarButton.PulloutHolder.PulloutFrame.Title, BaseTweenInfo, {
+                                ["TextColor3"] = Menu.Menu.Name == "PlusScreen" and Color3.fromRGB(0, 170, 127) or Color3.new(1,1,1) 
+                            }):Play()
+                        end
+                        task.delay(0.25, function()
+                            Menu.Menu.Visible = false
+                        end)
+                    end
+                end
+            end
+            task.delay(0.3, function()
+                MenuData.TogglingMenus = nil
+            end)
+            if MenuData.MenusHidden then
+                return
+            end
+            if not Visible then
+                UIData.__toggleEvent:Fire(true)
+                UIData.Menu.Visible = true
+                TweenService:Create(UIData.Menu, BaseTweenInfo, {["Size"] = UDim2.new(1, -20, 1, -20)}):Play()
+                if UIData.SidebarButton then
+                    TweenService:Create(UIData.SidebarButton.Inverted, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
+                    TweenService:Create(UIData.SidebarButton.InvertedIcon, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
+                    TweenService:Create(UIData.SidebarButton.PulloutHolder.PulloutFrame.Inverted, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
+                    TweenService:Create(UIData.SidebarButton.PulloutHolder.PulloutFrame.Title, BaseTweenInfo, {["TextColor3"] = Color3.new()}):Play()
+                end
             end
         end
     end
 end
-
 ModulesOptions = {
     ["Textbox"] = [=[
         local u1 = {}
@@ -1935,6 +2199,7 @@ ModulesOptions = {
             u8.DropdownVisible = false
             u8.Instance.DropdownFrame.Options:FindFirstChildOfClass("UIListLayout").SortOrder = Enum.SortOrder.LayoutOrder
             u8.Instance.DropdownFrame.MouseButton1Click:Connect(function()
+                PlaySound("click")
                 u8.DropdownVisible = not u8.DropdownVisible
                 u8.Instance.DropdownFrame.DropdownArrow.Rotation = u8.DropdownVisible and 180 or 0
                 u8.Instance.DropdownFrame.Options.Visible = u8.DropdownVisible
@@ -2202,6 +2467,10 @@ function Initializer.Start()
     local SettingsData = {}
     SettingsData.PlayerSettings = {}
     Initializer.SettingsMenu = MenuData:CreateSidebarMenu("Plus", PlusMenu)
+    if NewUIVersion then
+        PlusMenu:Destroy()
+        PlusMenu = Initializer.SettingsMenu.Menu
+    end
     local Contents = Initializer.SettingsMenu.Menu.SettingsContainer.Contents
     local Templates = ReplicatedStorage.Systems.Player.UI.Menus.Settings.Templates
     local function SetupSettingUI(SettingInstance, LayoutNumber)
@@ -2372,11 +2641,61 @@ function Initializer.Start()
     end)
 end
 Initializer.Start()
-if PlusButton:IsA("Frame") then
+
+if SidePlusButton:IsA("Frame") then
     task.spawn(function()
-        local Menu = MenuData.SidebarMenus[PlusButton.Name]
-        if Menu then
-            PlusButton.Button.MouseButton1Click:Connect(function()
+        local Menu = MenuData.SidebarMenus[SidePlusButton.Name]
+        if NewUIVersion then
+            local CountingMod = false
+            if Menu then
+                SidePlusButton.Button.MouseButton1Click:Connect(function()
+                    MenuData.SidebarMenus["Plus"]["_sidebar"]["MenusHidden"] = false
+                    if not PlusMenu.Visible then
+                        for i,v in MainUI:GetChildren() do
+                            if v ~= PlusMenu and (v.Name):find("Screen") or v.Name == "Shop" then
+                                local ButtonName = v.Name:gsub("Screen","")
+                                local Button = Buttons:FindFirstChild(ButtonName) or (SideBar:FindFirstChild("Bottombar") and SideBar.Bottombar.Buttons:FindFirstChild(ButtonName)) or nil
+                                if not Button and ButtonName ~= "Mod" then continue end
+                                if (MenuData.SidebarMenus[ButtonName] and not MenuData.SidebarMenus[ButtonName]["Checked"]) or (ButtonName == "Mod" and not CountingMod) then
+                                    if ButtonName == "Mod" then
+                                        CountingMod = true
+                                    else
+                                        MenuData.SidebarMenus[ButtonName]["Checked"] = true
+                                    end
+                                    if Button then
+                                        Button.Button.MouseButton1Click:Connect(function()
+                                            if PlusMenu.Visible and MenuData.TogglingMenus == nil then
+                                                SetButtonState(false)
+                                            end
+                                        end)
+                                    elseif ButtonName == "Mod" and PlayerGui.TopbarStandard.Holders.Left:FindFirstChild("Widget") then
+                                        local TopMod
+                                        for i,v in PlayerGui.TopbarStandard.Holders.Left:GetChildren() do
+                                            if v:FindFirstChildWhichIsA("TextLabel",true) and v:FindFirstChildWhichIsA("TextLabel",true).Text == "Command Panel" then
+                                                TopMod = v
+                                                break
+                                            end
+                                        end
+                                        if TopMod then
+                                            TopMod.IconButton.Menu.IconSpot.ClickRegion.MouseButton1Click:Connect(function()
+                                                if PlusMenu.Visible and MenuData.TogglingMenus == nil then
+                                                    SetButtonState(false)
+                                                end
+                                            end)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    if MenuData.TogglingMenus == nil then
+                        Menu:ToggleMenu()
+                    end
+                end)
+            end
+        else
+            if Menu then
+            SidePlusButton.Button.MouseButton1Click:Connect(function()
                 if not PlusMenu.Visible then
                     for i,v in MainUI:GetChildren() do
                         if v ~= PlusMenu and (v.Name):find("Screen") then
@@ -2413,46 +2732,69 @@ if PlusButton:IsA("Frame") then
                 end
             end)
         end
+        end
     end)
-    local IsBottomBar = PlusButton.Parent.Parent.Name == "Bottombar"
-    local PulloutHolder = PlusButton.PulloutHolder
-    PulloutHolder.Parent = IsBottomBar and (MenuData.Sidebars.Bottombar.Pullouts or PlusButton) or PlusButton
-    local PulloutFrame = PulloutHolder.PulloutFrame
-    PulloutFrame.Title.Text = PlusButton.Name
-    PlusButton.MouseEnter:Connect(function()
-        if PlusButton.Button.ImageTransparency <= 0.1 then
-            TweenService:Create(PlusButton, BaseTweenInfo, {
-                ["Size"] = UDim2.fromScale(1.05, IsBottomBar and 1.15 or 0.25)
+    if NewUIVersion then
+        SidePlusButton.MouseEnter:Connect(function()
+            TweenService:Create(SidePlusButton, BaseTweenInfo, {
+                ["Size"] = UDim2.fromScale(0.69, 0.09)
             }):Play()
-            if IsBottomBar then
-                TweenService:Create(PulloutHolder, BaseTweenInfo, {["Position"] = UDim2.fromScale(0.65, 0.85),["Size"] = UDim2.fromScale(0.35, 0.75)}):Play()
-                TweenService:Create(PulloutFrame.Display, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
-                TweenService:Create(PulloutFrame.Title, BaseTweenInfo, {["TextTransparency"] = 0}):Play()
-            else
-                TweenService:Create(PulloutFrame, BaseTweenInfo, {["Position"] = UDim2.new(0.225, PulloutFrame.Title.AbsoluteSize.X ^ 1.03, 0.5, 0)}):Play()
-            end
             PlaySound("hover")
-        end
-    end)
-    PlusButton.MouseLeave:Connect(function()
-        TweenService:Create(PlusButton, BaseTweenInfo, {["Size"] = UDim2.fromScale(1, IsBottomBar and 1 or 0.2)}):Play()
-        if IsBottomBar then
-            TweenService:Create(PulloutHolder, BaseTweenInfo, {["Position"] = UDim2.fromScale(0.65, 1),["Size"] = UDim2.fromScale(0.15, 0.45)}):Play()
-            TweenService:Create(PulloutFrame.Display, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
-            TweenService:Create(PulloutFrame.Title, BaseTweenInfo, {["TextTransparency"] = 1}):Play()
-        else
-            TweenService:Create(PulloutFrame, BaseTweenInfo, {["Position"] = UDim2.fromScale(0, 0.5)}):Play()
-        end
-        if PlusButton.Button.ImageTransparency <= 0.1 then
+        end)
+        SidePlusButton.MouseLeave:Connect(function()
+            TweenService:Create(SidePlusButton, BaseTweenInfo, {
+                ["Size"] = UDim2.fromScale(0.684, 0.073)
+            }):Play()
             PlaySound("hoverEnd")
-        end
-    end)
+        end)
+    else
+        local IsBottomBar = SidePlusButton.Parent.Parent.Name == "Bottombar"
+        local PulloutHolder = SidePlusButton.PulloutHolder
+        PulloutHolder.Parent = IsBottomBar and (MenuData.Sidebars.Bottombar.Pullouts or SidePlusButton) or SidePlusButton
+        local PulloutFrame = PulloutHolder.PulloutFrame
+        PulloutFrame.Title.Text = SidePlusButton.Name
+        SidePlusButton.MouseEnter:Connect(function()
+            if SidePlusButton.Button.ImageTransparency <= 0.1 then
+                TweenService:Create(SidePlusButton, BaseTweenInfo, {
+                    ["Size"] = UDim2.fromScale(1.05, IsBottomBar and 1.15 or 0.25)
+                }):Play()
+                if IsBottomBar then
+                    TweenService:Create(PulloutHolder, BaseTweenInfo, {["Position"] = UDim2.fromScale(0.65, 0.85),["Size"] = UDim2.fromScale(0.35, 0.75)}):Play()
+                    TweenService:Create(PulloutFrame.Display, BaseTweenInfo, {["ImageTransparency"] = 0}):Play()
+                    TweenService:Create(PulloutFrame.Title, BaseTweenInfo, {["TextTransparency"] = 0}):Play()
+                else
+                    TweenService:Create(PulloutFrame, BaseTweenInfo, {["Position"] = UDim2.new(0.225, PulloutFrame.Title.AbsoluteSize.X ^ 1.03, 0.5, 0)}):Play()
+                end
+                PlaySound("hover")
+            end
+        end)
+        SidePlusButton.MouseLeave:Connect(function()
+            TweenService:Create(SidePlusButton, BaseTweenInfo, {["Size"] = UDim2.fromScale(1, IsBottomBar and 1 or 0.2)}):Play()
+            if IsBottomBar then
+                TweenService:Create(PulloutHolder, BaseTweenInfo, {["Position"] = UDim2.fromScale(0.65, 1),["Size"] = UDim2.fromScale(0.15, 0.45)}):Play()
+                TweenService:Create(PulloutFrame.Display, BaseTweenInfo, {["ImageTransparency"] = 1}):Play()
+                TweenService:Create(PulloutFrame.Title, BaseTweenInfo, {["TextTransparency"] = 1}):Play()
+            else
+                TweenService:Create(PulloutFrame, BaseTweenInfo, {["Position"] = UDim2.fromScale(0, 0.5)}):Play()
+            end
+            if SidePlusButton.Button.ImageTransparency <= 0.1 then
+                PlaySound("hoverEnd")
+            end
+        end)
+    end
 end
 
 local function UICheck()
     local Status = SideBar:GetAttribute("WasVisible")
+    SetButtonState(false)
     if Status then
-        Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+        if not NewUIVersion then
+            Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+        else
+            SideBar:FindFirstChildOfClass("UIPadding").PaddingRight = UDim.new(0.2,0)
+            SideBar:FindFirstChildOfClass("UIPadding").PaddingLeft = UDim.new(0,0)
+            UIScale.Scale = 1
+        end
         PlusMenu.SettingsContainer.ImageTransparency = 0
         PlusMenu.SettingsContainer.Contents.ScrollBarImageTransparency = 0
         if SideBar:IsA("ImageLabel") then
@@ -2470,6 +2812,15 @@ local function UICheck()
             end
         end
     else
+        if NewUIVersion then
+            MenuData.SidebarMenus["Plus"]["_sidebar"]["MenusHidden"] = false
+            task.delay(0.5,function()
+                MenuData.SidebarMenus["Plus"]["_sidebar"]["MenusHidden"] = false
+            end)
+            SideBar:FindFirstChildOfClass("UIPadding").PaddingRight = UDim.new(0,0)
+            SideBar:FindFirstChildOfClass("UIPadding").PaddingLeft = UDim.new(0.2,0)
+            UIScale.Scale = 1.3
+        end
         Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
         PlusMenu.SettingsContainer.ImageTransparency = 0.3
         PlusMenu.SettingsContainer.Contents.ScrollBarImageTransparency = 0.45
@@ -2491,7 +2842,7 @@ local function UICheck()
     for i,v in SideBar:QueryDescendants("#Money, #Bottombar, #Buttons > Frame:not(#Credits):not(#TesterUi)") do
         v.Visible = Status
     end
-    PlusButton.Visible = true
+    SidePlusButton.Visible = true
     if not Status then
         RoundEvent:Fire("Start")
     else
