@@ -19,7 +19,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.2"
+local Version = "1.23"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -1406,6 +1406,7 @@ FeatureLoadout["ExploitFunctions"]["TabAttributes"]["DisplayTitle"] = string.for
     RichTextGradientColor("Nikoleto Scripts",{Color3.fromRGB(140, 0, 255), Color3.fromRGB(215, 0, 243)}),
     RichTextGradientColor("V"..Version,{Color3.fromRGB(87, 160, 255),Color3.fromRGB(0, 132, 255)})
 ) -- Tryna edit something here?? i can see that... you ain taking no credit you know..
+
 local ThreadManager = {Threads = {}}
 function ThreadManager:Start(Name,Function,Interval)
     if ThreadManager.Threads[Name] then
@@ -1697,10 +1698,13 @@ ThreadManager:Start("FeatureHandler", function()
                         local RemoteEvent = Remotes and Remotes:FindFirstChildOfClass("RemoteEvent")
                         if RemoteEvent and Progress and Progress.Value < 100 then
                             while Progress.Value < 100 do
-                                if not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") then
+                                if not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") or not Automation["AutoGeneratorPuzzle"]["Instance"].Value  then
                                     break
                                 end
                                 task.wait(Random.new():NextNumber(1.45,1.6))
+                                if not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") or not Automation["AutoGeneratorPuzzle"]["Instance"].Value  then
+                                    break
+                                end
                                 RemoteEvent:FireServer()
                             end
                         end
@@ -1958,11 +1962,17 @@ end
 
 local BaseTweenInfo = TweenInfo.new(0.25)
 local MenuData
+local Signal
 if NewUIVersion then
-    local Signal = require(game.ReplicatedStorage.Modules.Utilities.Signal)
-    MenuData = require(game:GetService("ReplicatedStorage").Systems.Player.UI.SidebarHandler)
+    local suc, err = pcall(function()
+        Signal = require(ReplicatedStorage.Modules:FindFirstChild("Utilities") and ReplicatedStorage.Modules.Utilities:FindFirstChild("Signal",true) or ReplicatedStorage.Modules:FindFirstChild("Misc"):FindFirstChild("Signal") or ReplicatedStorage.Modules:FindFirstChild("Signal",true))
+        MenuData = require(ReplicatedStorage.Systems.Player:FindFirstChild("SidebarHandler",true))
+    end)
+    if not suc or not MenuData or not Signal then
+        error("Your executor does not support this UI Version.\n Switch to a different executor or play a forsaken clone game that uses the V1 UI.\n The executor must fully support 'require' function for the UI to work in the official forsaken")
+        return
+    end
     MenuData.__index = MenuData
-
     local UICreator = {}
     UICreator.__index = UICreator
     function UICreator.new(MenuName, MenuScreen)
