@@ -19,7 +19,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.23"
+local Version = "1.24"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -60,7 +60,7 @@ local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,true
 local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-05-25"
+local GameVersionForScript = "2026-05-27"
 local CurrentGameVersion = MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -361,6 +361,19 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
+        ["AnimationChanger"] = {
+            ["DisplayDescription"] = "Select a animation to override <b>(NO FUNCTIONALITY)</b>",
+            ["DisplayTitle"] = "Animation Changer",
+            ["LayoutOrder"] = 10,
+            ["Savable"] = false,
+            ["InstanceType"] = "StringValue",
+            ["DefaultInstanceValue"] = "Original",
+            ["ExtraData"] = {
+                ["Requirement"] = true,
+                ["Options"] = "Original|?|??|???|????"
+            },
+            ["ScriptFunction"] = function(self, Value) end
+        },
     },
 
     ["Visuals"] = {
@@ -369,7 +382,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["LayoutOrder"] = 3
         },
         ["KillerNPCDetector"] = {
-            ["DisplayDescription"] = "Shows a label on top of killer npcs and makes them transparent (NO FUNCTIONALITY)",
+            ["DisplayDescription"] = "Shows a label on top of killer NPCs <b>(NO FUNCTIONALITY)</b>",
             ["DisplayTitle"] = "Killer NPC Detector",
             ["LayoutOrder"] = 1,
             ["Savable"] = true,
@@ -1368,7 +1381,7 @@ if game.GameId == 6331902150 then
         local CurrentTime = os.time{year=y, month=m, day=d}
         local DaysSinceScriptUpdate = math.floor(math.abs(ThenTime - os.time()) / 86400)
         local DaysSinceGameUpdate = math.floor(math.abs(CurrentTime - os.time()) / 86400)
-        if math.abs(ThenTime-CurrentTime) > 0 and DaysSinceScriptUpdate > 0 then
+        if ThenTime < CurrentTime and DaysSinceScriptUpdate > 0 then
             ColoredPrint("Days since last script update: " .. DaysSinceScriptUpdate,"info", Color3.fromRGB(236, 48, 120))
             ColoredPrint("Days since game update: " .. DaysSinceGameUpdate,"info", Color3.fromRGB(236, 48, 120))
             FeatureLoadout["Outdated"] = {
@@ -1586,6 +1599,8 @@ local hookmetamethod = GetFunction(hookmetamethod, hook_metamethod)
 if not hookmetamethod then
     FeatureLoadout["ExploitFunctions"]["hookmetamethod"]["DefaultInstanceValue"] = false
 else
+    export type DesyncHook = {DesyncNumber:number,BufferCorruption:buffer}
+    export type CorruptArguments = {Number:number,Table1:table,NilObject:any,Table2:table}
     local HookSuccess, HookResult = pcall(function()
         local Event = Network:WaitForChild("UnreliableRemoteEvent")
         local newcclosure = GetFunction(newcclosure, new_cclosure) or function(LClosure)
@@ -1594,11 +1609,11 @@ else
         local FeatureInstance = FeatureLoadout["Features"]["Invincible"]["Instance"]
         local TypeEnum = {"invalidnumber"}
         local __namecall = true
-        __namecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        __namecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...): DesyncHook
             if IsUnderground and rawequal(self, Event) and FeatureInstance.Value and getnamecallmethod() == "FireServer" then
-                local Args = {...}
+                local Args: CorruptArguments = {...}
                 if Args[1]==1 and Args[2] then
-                    local DesyncerNum:number = 6e9
+                    local DesyncerNum = 6e9
                     Args[4] = table.create(3)
                     local OutsideVector = Vector3.new(9999,DesyncerNum,9999)
                     task.spawn(function()
@@ -1615,7 +1630,7 @@ else
                             end
                         end
                     end)
-                    local NAN,BuggedCFrame = coroutine.resume(coroutine.create(function():CFrame
+                    local NAN,BuggedCFrame = coroutine.resume(coroutine.create(function()
                         return CFrame.fromMatrix(OutsideVector,Vector3.zero,Vector3.one,Vector3.new(1,0,1)):Orthonormalize()
                     end))
                     Args[4][1] = OutsideVector.Unit
@@ -2849,7 +2864,7 @@ local function UICheck()
             end
         end
     end
-    for i,v in SideBar:QueryDescendants("#Money, #Bottombar, #Buttons > Frame:not(#Credits):not(#TesterUi)") do
+    for i,v in SideBar:QueryDescendants("#Money, #Bottombar, #Buttons > Frame" .. ((not NewUIVersion) and ":not(#Credits)" or "") ..":not(#TesterUi)") do
         v.Visible = Status
     end
     SidePlusButton.Visible = true
