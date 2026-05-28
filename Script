@@ -19,7 +19,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.24"
+local Version = "1.27"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -50,6 +50,7 @@ local TextChatService = game:GetService("TextChatService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
 local Debris = game:GetService("Debris")
 local Network = ReplicatedStorage:FindFirstChild("Modules") and (ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) and ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true):FindFirstChild("Network")) or ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) or nil
@@ -57,10 +58,10 @@ local GameMap = workspace:FindFirstChild("Map") and workspace:FindFirstChild("Ma
 local RoundEvent = Instance.new("BindableEvent")
 local UIScale = Instance.new("UIScale")
 local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,true,false
-local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping
+local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping,HandleNoliNPC
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-05-27"
+local GameVersionForScript = "2026-05-28"
 local CurrentGameVersion = MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -381,17 +382,17 @@ local FeatureLoadout; FeatureLoadout = {
             ["DisplayTitle"] = "Visuals",
             ["LayoutOrder"] = 3
         },
-        ["KillerNPCDetector"] = {
-            ["DisplayDescription"] = "Shows a label on top of killer NPCs <b>(NO FUNCTIONALITY)</b>",
-            ["DisplayTitle"] = "Killer NPC Detector",
+        ["DisableNoliNPC"] = {
+            ["DisplayDescription"] = "Disables Noli's Distracting NPC",
+            ["DisplayTitle"] = "Disables Noli's NPC",
             ["LayoutOrder"] = 1,
             ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
-            ["ExtraData"] = {
-                ["Requirement"] = true
-            },
-            ["ScriptFunction"] = function(self, Value) end
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                HandleNoliNPC(Value)
+            end
         },
         ["ESP"] = {
             ["DisplayDescription"] = "Track things in the game through walls",
@@ -851,8 +852,12 @@ PlusMenu.Parent = MainUI
 PlusMenu.Visible = false
 PlusMenu.Size = UDim2.new(1,-20,0,0)
 PlusMenu.SettingsContainer.ImageColor3 = Color3.fromRGB(0, 170, 127)
+PlusMenu.SettingsContainer.BackgroundTransparency = 1
 PlusMenu.SettingsContainer.Contents.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 127)
+PlusMenu.SettingsContainer.Contents.Size = UDim2.fromScale(0.95,0.935)
+PlusMenu.SettingsContainer.Contents.Position = UDim2.fromScale(0.5,0.035)
 PlusMenu.ZIndex += 25
+for i,v in PlusMenu.SettingsContainer:GetChildren() do if not (v:IsA("UIAspectRatioConstraint") or v.Name == "Contents") then v:Destroy() end end
 for i,v in PlusMenu.SettingsContainer.Contents:QueryDescendants("Frame,ImageLabel") do v:Destroy() end
 
 -- Functions --
@@ -1207,23 +1212,56 @@ end
 
 function HandleAllowJumping(Value)
     if LocalHumanoid and not LocalHumanoid:GetAttribute("JumpingConnection") then
-        LocalHumanoid.JumpPower = Value and 45 or 0
         if Value then
             if not LocalHumanoid:GetAttribute("JumpingConnection") then
-                LocalHumanoid:SetAttribute("JumpingConnection",true)
+                LocalHumanoid:SetAttribute("JumpingConnection",LocalHumanoid.JumpPower)
             else
                 return
             end
-            LocalHumanoid.StateChanged:Connect(function(old,new)
+            local Connection;Connection = LocalHumanoid.StateChanged:Connect(function(old,new)
                 if LocalCharacter.Parent ~= "Spectator" and new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall and LocalHumanoid.JumpPower > 0 and ((FeatureLoadout["Features"]["EnableJumping"]["Instance"] and FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value) or false) then
+                    if not(FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value) then
+                        Connection:Disconnect()
+                        LocalHumanoid.JumpPower = LocalHumanoid:GetAttribute("JumpingConnection") or 0
+                        LocalHumanoid:SetAttribute("JumpingConnection",nil)
+                        return
+                    end
                     task.spawn(function()
                         task.wait(0.067)
                         LocalHumanoid.JumpPower = 0
                     end)
                     task.wait(1.5)
-                    LocalHumanoid.JumpPower = 45
+                    if FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value then
+                        LocalHumanoid.JumpPower = 45
+                    else
+                        Connection:Disconnect()
+                        LocalHumanoid.JumpPower = LocalHumanoid:GetAttribute("JumpingConnection") or 0
+                        LocalHumanoid:SetAttribute("JumpingConnection",nil)
+                    end
                 end
             end)
+        end
+        LocalHumanoid.JumpPower = Value and 45 or 0
+    end
+end
+
+function HandleNoliNPC(Value)
+    if Value then
+        for i,v in workspace.Players.Killers:GetChildren() do
+            if v.Name:lower() == "noli" and not Players:GetPlayerFromCharacter(v) then
+                v.Parent = Lighting
+            end
+        end
+        if workspace:FindFirstChild("Themes") then
+            for i,v in pairs(workspace.Themes:GetChildren()) do
+                if v.Name:find("FakeLayer") and v:IsA("Sound") then
+                    v:Destroy()
+                end
+            end
+        end
+    else
+        if Lighting:FindFirstChild("Noli") then
+            Lighting.Noli.Parent = workspace.Players.Killers
         end
     end
 end
@@ -1290,7 +1328,7 @@ function GoUnder(Value)
             task.wait(0.03)
             LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
             if game.GameId == 6331902150 or game.GameId == 7464167604 then
-                game.StarterGui:SetCore("SendNotification",
+                StarterGui:SetCore("SendNotification",
                     {
                         Title = "Fail",
                         Text = "Failed to become invincible, if this keeps happning please report this in the discord server",
@@ -1299,7 +1337,7 @@ function GoUnder(Value)
                     }
                 )
             else
-                game.StarterGui:SetCore("SendNotification",
+                StarterGui:SetCore("SendNotification",
                     {
                         Title = "Fail",
                         Text = "Failed to become invincible, this feature is not supported here",
@@ -1420,6 +1458,8 @@ FeatureLoadout["ExploitFunctions"]["TabAttributes"]["DisplayTitle"] = string.for
     RichTextGradientColor("V"..Version,{Color3.fromRGB(87, 160, 255),Color3.fromRGB(0, 132, 255)})
 ) -- Tryna edit something here?? i can see that... you ain taking no credit you know..
 
+FeatureLoadout["Visuals"]["DisableNoliNPC"]["DisplayTitle"] = string.format("Disables %s NPC", RichTextGradientColor("Noli's",{Color3.fromRGB(130, 72, 255), Color3.fromRGB(77, 0, 185)}))
+
 local ThreadManager = {Threads = {}}
 function ThreadManager:Start(Name,Function,Interval)
     if ThreadManager.Threads[Name] then
@@ -1522,6 +1562,7 @@ local readfile = GetFunction(readfile, read_file)
 local writefile = GetFunction(writefile, write_file)
 local isfolder = GetFunction(isfolder, is_folder)
 local isfile = GetFunction(isfile, is_file)
+local makefolder = GetFunction(makefolder, make_folder)
 local UserType = 1
 if not (readfile and writefile and isfolder and isfile) then
     FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] = false
@@ -1583,6 +1624,7 @@ for TabName, TabContents in FeatureLoadout do
                 WarnedAboutFilesCompatability = true
                 ColoredPrint("Failed to load a savable feature.\nIf this bothers you then you should use a different executor that supports 'writefile' and 'readfile'", "info", Color3.new(1,0.25,0))
             end
+            SettingData.DisplayDescription = SettingData.DisplayDescription:gsub("%(NO FUNCTIONALITY%)", RichTextGradientColor("(NO FUNCTIONALITY)",{Color3.fromRGB(255, 83, 53), Color3.fromRGB(255, 123, 0),Color3.fromRGB(255, 83, 53)}))
             NewInstance:SetAttribute("DisplayDescription",SettingData.DisplayDescription)
             NewInstance:SetAttribute("DisplayTitle",SettingData.DisplayTitle)
             NewInstance:SetAttribute("LayoutOrder",SettingData.LayoutOrder)
@@ -1704,8 +1746,8 @@ ThreadManager:Start("FeatureHandler", function()
     end
     task.spawn(function()
         if LocalRoot and not IsFixingGenerator and Automation["AutoGeneratorPuzzle"]["Instance"].Value and GameMap then
-            for i,Object in GameMap:GetChildren() do
-                if Object.Name == "Generator" and Object:FindFirstChild("Main") and LocalRoot and LocalRoot.Anchored ~= true and (Object:FindFirstChild("Main").Position - LocalRoot.Position).Magnitude < 15 then
+            for i,Object in GameMap:QueryDescendants("Model#Generator:has(#Main)") do
+                if LocalRoot and LocalRoot.Anchored ~= true and (Object:FindFirstChild("Main").Position - LocalRoot.Position).Magnitude < 15 then
                     task.spawn(function()
                         IsFixingGenerator = true
                         local Remotes = Object:FindFirstChild("Remotes")
@@ -1772,17 +1814,15 @@ ThreadManager:Start("FeatureHandler", function()
                 end
             end
         end)
-        for i,v in GameMap:GetChildren() do
-            if v.Name == "Generator" then
-                if FeatureLoadout["Visuals"]["GeneratorsCheck"]["Instance"].Value == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value == 100 then
-                    CreateDynamicHighlight(false, v)
-                elseif v:FindFirstChild("Progress") then
-                    CreateDynamicHighlight(FeatureLoadout["Visuals"]["GeneratorsESP"]["Instance"].Value, v, v:FindFirstChild("Main") or v:WaitForChild("Main"), {
-                        ["MaxDistance"] = 100,
-                        ["MinDistance"] = 10,
-                        ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["GeneratorsColor"]["Instance"].Value]
-                    })
-                end
+        for i,v in GameMap:QueryDescendants("Model#Generator:has(#Main)") do
+            if FeatureLoadout["Visuals"]["GeneratorsCheck"]["Instance"].Value == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value == 100 then
+                CreateDynamicHighlight(false, v)
+            elseif v:FindFirstChild("Progress") then
+                CreateDynamicHighlight(FeatureLoadout["Visuals"]["GeneratorsESP"]["Instance"].Value, v, v:FindFirstChild("Main") or v:WaitForChild("Main"), {
+                    ["MaxDistance"] = 100,
+                    ["MinDistance"] = 10,
+                    ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["GeneratorsColor"]["Instance"].Value]
+                })
             end
         end
         for i,v in workspace.Players:QueryDescendants("#Killers > Instance,#Survivors > Instance") do
@@ -1910,6 +1950,22 @@ PlayerGui.ChildAdded:Connect(function(Child)
     end
 end)
 
+if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
+    workspace.Players.Killers.ChildAdded:Connect(function(Child)
+        if Child.Name:lower() == "noli" and not Players:GetPlayerFromCharacter(Child) and FeatureLoadout["Features"]["DisableNoliNPC"]["Instance"].Value then
+            Child.Parent = Lighting
+        end
+    end)
+end
+
+if workspace:FindFirstChild("Themes") then
+    workspace.Themes.ChildAdded:Connect(function(Child)
+        if Child.Name:find("FakeLayer") and Child:IsA("Sound") and FeatureLoadout["Features"]["DisableFakeLayers"]["Instance"].Value then
+            Child:Destroy()
+        end
+    end)
+end
+
 RoundEvent.Event:Connect(function(Data)
     if Data == "Start" then
         if FeatureLoadout["Miscellaneous"]["ShowChat"]["Instance"].Value then
@@ -1984,7 +2040,13 @@ if NewUIVersion then
         MenuData = require(ReplicatedStorage.Systems.Player:FindFirstChild("SidebarHandler",true))
     end)
     if not suc or not MenuData or not Signal then
-        error("Your executor does not support this UI Version.\n Switch to a different executor or play a forsaken clone game that uses the V1 UI.\n The executor must fully support 'require' function for the UI to work in the official forsaken")
+        ColoredPrint("⚠ YOUR EXECUTOR DOES NOT SUPPORT THIS UI VERSION! ⚠\n Switch to a different executor or play a forsaken clone game that uses the V1 UI.\n The executor must fully support 'require' function for the script to work here", "error", Color3.new(1,0.4,0.25))
+        PlusButton.Visible = false
+        SidePlusButton.Visible = false
+        StarterGui:SetCore("DevConsoleVisible", true)
+        if MainUI:FindFirstChild("UpdateScreen") then
+            MainUI:FindFirstChild("UpdateScreen").Visible = false
+        end
         return
     end
     MenuData.__index = MenuData
@@ -2222,7 +2284,9 @@ ModulesOptions = {
             u8.Value = u3.Value
             u8.Instance = p4 or game:GetService("ReplicatedStorage").Systems.Player.UI.Menus.Settings.Templates.String.Dropdown:Clone()
             u8.DropdownVisible = false
-            u8.Instance.DropdownFrame.Options:FindFirstChildOfClass("UIListLayout").SortOrder = Enum.SortOrder.LayoutOrder
+            local UIListLayout = u8.Instance.DropdownFrame.Options:FindFirstChildOfClass("UIListLayout") or Instance.new("UIListLayout")
+            UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            UIListLayout.Parent = u8.Instance.DropdownFrame.Options
             u8.Instance.DropdownFrame.MouseButton1Click:Connect(function()
                 PlaySound("click")
                 u8.DropdownVisible = not u8.DropdownVisible
