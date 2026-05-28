@@ -1960,7 +1960,7 @@ end
 
 if workspace:FindFirstChild("Themes") then
     workspace.Themes.ChildAdded:Connect(function(Child)
-        if Child.Name:find("FakeLayer") and Child:IsA("Sound") and FeatureLoadout["Features"]["DisableFakeLayers"]["Instance"].Value then
+        if Child.Name:find("FakeLayer") and Child:IsA("Sound") and FeatureLoadout["Features"]["DisableNoliNPC"]["Instance"].Value then
             Child:Destroy()
         end
     end)
