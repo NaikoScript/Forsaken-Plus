@@ -1952,17 +1952,8 @@ end)
 
 if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
     workspace.Players.Killers.ChildAdded:Connect(function(Child)
-        if Child.Name:lower() == "noli" and not Players:GetPlayerFromCharacter(Child) and FeatureLoadout["Features"]["DisableNoliNPC"]["Instance"].Value then
-            Child.Parent = Lighting
-        end
-    end)
-end
-
-if workspace:FindFirstChild("Themes") then
-    workspace.Themes.ChildAdded:Connect(function(Child)
-        if Child.Name:find("FakeLayer") and Child:IsA("Sound") and FeatureLoadout["Features"]["DisableNoliNPC"]["Instance"].Value then
-            Child:Destroy()
-        end
+        task.wait(0.5)
+        HandleNoliNPC(FeatureLoadout["Visuals"]["DisableNoliNPC"]["Instance"] and FeatureLoadout["Visuals"]["DisableNoliNPC"]["Instance"].Value)
     end)
 end
 
