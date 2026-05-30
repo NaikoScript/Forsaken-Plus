@@ -61,7 +61,7 @@ local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,true
 local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping,HandleNoliNPC
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-05-28"
+local GameVersionForScript = "2026-05-30"
 local CurrentGameVersion = MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -1788,7 +1788,7 @@ ThreadManager:Start("FeatureHandler", function()
         local Tools = GameMap.Parent:QueryDescendants("#Map > Tool")
         local DroppedTools = GameMap.Parent.Parent:QueryDescendants("Folder > Tool")
         task.spawn(function()
-            if FeatureLoadout["Automation"]["AutoPickup"]["Instance"] and FeatureLoadout["Automation"]["AutoPickup"]["Instance"].Value and LocalCharacter and LocalCharacter.Parent.Name == "Survivors" then
+            if FeatureLoadout["Automation"]["AutoPickup"]["Instance"] and FeatureLoadout["Automation"]["AutoPickup"]["Instance"].Value and LocalCharacter and LocalCharacter.Parent and LocalCharacter.Parent.Name == "Survivors" then
                 for i,v in table.move(Tools,1,#Tools,#DroppedTools+1,DroppedTools) do
                     CreateDynamicHighlight(FeatureLoadout["Visuals"]["ItemsESP"]["Instance"].Value, v, v:FindFirstChildWhichIsA("BasePart"), {
                         ["MaxDistance"] = 100,
