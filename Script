@@ -18,7 +18,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.3"
+local Version = "1.4"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -53,16 +53,18 @@ local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
 local Debris = game:GetService("Debris")
 local Network = ReplicatedStorage:FindFirstChild("Modules") and (ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) and ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true):FindFirstChild("Network")) or ReplicatedStorage:FindFirstChild("Modules"):FindFirstChild("Network",true) or nil
-local GameMap = workspace:FindFirstChild("Map") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame"):FindFirstChild("Map") or nil
+local InGame = workspace:FindFirstChild("Map") and workspace:FindFirstChild("Map"):FindFirstChild("Ingame")
+local GameMap = InGame and InGame:FindFirstChild("Map") or nil
 local RoundEvent = Instance.new("BindableEvent")
 local BindableShouldStop = Instance.new("BindableEvent")
 local UIScale = Instance.new("UIScale")
 local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,false,false
-local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping,HandleNoliNPC,ChangeTrackWithOverride,LastTrack
+local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping,HandleNoliNPC,ChangeTrackWithOverride,LastTrack,NoliConfig,TableValueFind,ColoredPrint,Handle007n7NPC,GetValue
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-06-09"
-local CurrentGameVersion = MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] or GameVersionForScript
+local GameVersionForScript = "2026-06-12"
+local OverriddenAnimations = {}
+local Worked,CurrentGameVersion = pcall(function() return MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] end) ; CurrentGameVersion = Worked and CurrentGameVersion or GameVersionForScript
 local AllAnimations = {}
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -125,6 +127,18 @@ local FeatureLoadout; FeatureLoadout = {
             ["Savable"] = false,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = game.GameId == 6331902150 or game.GameId == 7464167604,
+            ["ExtraData"] = {
+                ["Requirement"] = true,
+            },
+            ["ScriptFunction"] = function(self, State) end
+        },
+        ["PrivateServer"] = {
+            ["DisplayDescription"] = " ",
+            ["DisplayTitle"] = "Private Server",
+            ["LayoutOrder"] = 666,
+            ["Savable"] = false,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = workspace:GetAttribute("ServerType") == "VIP",
             ["ExtraData"] = {
                 ["Requirement"] = true,
             },
@@ -275,7 +289,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
-                for i,v in workspace.Map.Ingame:GetChildren() do
+                for i,v in InGame:GetChildren() do
                     if v:IsA("Folder") and (v.Name):find("JohnDoeTrail") then
                         for i,v2 in v:GetChildren() do
                             if v2:IsA("BasePart") then
@@ -295,7 +309,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
-                for i,v in workspace.Map.Ingame:GetChildren() do
+                for i,v in InGame:GetChildren() do
                     if v:IsA("Folder") and (v.Name):find("Shadows") then
                         for i,v2 in v:GetChildren() do
                             if v2:IsA("BasePart") then
@@ -323,7 +337,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
-                for i,v in workspace.Map.Ingame:GetChildren() do
+                for i,v in InGame:GetChildren() do
                     if v.Name == "SpikeCollision" then
                         v.Size = Value and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
                         v.Shape = Value and Enum.PartType.Cylinder or Enum.PartType.Block
@@ -399,15 +413,54 @@ local FeatureLoadout; FeatureLoadout = {
             end
         },
         ["NoliControl"] = {
-            ["DisplayDescription"] = "Allow you to have better control of Void Rush Ability <b>(NO FUNCTIONALITY)</b>",
+            ["DisplayDescription"] = "Allows you to have better control of Void Rush Ability",
             ["DisplayTitle"] = "Better Void Rush",
             ["LayoutOrder"] = 11,
-            ["Savable"] = false,
+            ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
             ["ExtraData"] = {
-                ["Requirement"] = true
+                ["Requirement"] = "require"
             },
+            ["ScriptFunction"] = function(self, Value)
+                if NoliConfig then
+                    for _, Entry in {
+                        {Name = "InitialTurnDuration", Value = 0.005, Default = 1.5},
+                        {Name = "TurnSpeed", Value = 10000, Default = 1},
+                        {Name = "InitialTurnMult", Value = 1000, Default = 6.6},
+                    } do
+                        local Key, _, Parent = TableValueFind(NoliConfig, function(i, v) return type(i) == "string" and i:find(Entry.Name) and not i:find(Entry.Name .. "OG") end)
+                        if Key and Parent then
+                            if Value then
+                                Parent[Entry.Name .. "OG"] = Parent[Key]
+                                Parent[Key] = Entry.Value
+                            elseif Parent[Entry.Name .. "OG"] ~= nil then
+                                Parent[Key] = Parent[Entry.Name .. "OG"] or Entry.Default
+                            end
+                        end
+                    end
+                    if LocalCharacter and LocalCharacter.Parent.Name == "Killers" and not workspace:GetAttribute("NotifCD") then
+                        StarterGui:SetCore("SendNotification", {
+                            Title = "Information",
+                            Text = "Changes only apply the time you become the killer",
+                            Duration = 5
+                        })
+                        workspace:SetAttribute("NotifCD", true)
+                        task.delay(10, function()
+                            workspace:SetAttribute("NotifCD", nil)
+                        end)
+                    end
+                end
+            end
+        },
+        ["ControllableDash"] = {
+            ["DisplayDescription"] = "Allows you to control where the dash goes just like Void Rush Ability",
+            ["DisplayTitle"] = "Make Coolkidd's Dash Controllable",
+            ["LayoutOrder"] = 12,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value) end
         }
     },
@@ -419,7 +472,7 @@ local FeatureLoadout; FeatureLoadout = {
         },
         ["DisableNoliNPC"] = {
             ["DisplayDescription"] = "Disables Noli's Distracting NPC",
-            ["DisplayTitle"] = "Disables Noli's NPC",
+            ["DisplayTitle"] = "Disable Noli's NPC",
             ["LayoutOrder"] = 1,
             ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
@@ -427,6 +480,18 @@ local FeatureLoadout; FeatureLoadout = {
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value)
                 HandleNoliNPC(Value)
+            end
+        },
+        ["Disable007n7NPC"] = {
+            ["DisplayDescription"] = "Disables 007n7's Distracting NPC",
+            ["DisplayTitle"] = "Disable 007n7's NPC",
+            ["LayoutOrder"] = 1,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {},
+            ["ScriptFunction"] = function(self, Value)
+                Handle007n7NPC(Value)
             end
         },
         ["ESP"] = {
@@ -665,7 +730,9 @@ local FeatureLoadout; FeatureLoadout = {
             ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
-            ["ExtraData"] = {},
+            ["ExtraData"] = {
+                ["Requirement"] = not game:GetService("Chat"):CanUserChatAsync(LocalPlayer.UserId) and true or nil
+            },
             ["ScriptFunction"] = function(self, Value)
                 if not SideBar:GetAttribute("WasVisible") and TextChatService:FindFirstChildOfClass("ChatWindowConfiguration") then
                     TextChatService:FindFirstChildOfClass("ChatWindowConfiguration").Enabled = Value
@@ -702,6 +769,22 @@ local FeatureLoadout; FeatureLoadout = {
                 end
                 if game:GetService("Lighting"):FindFirstChild("HealthDesaturation") then
                     game:GetService("Lighting"):FindFirstChild("HealthDesaturation").Enabled = not Value
+                end
+            end
+        },
+        ["DeleteRagdolls"] = {
+            ["DisplayDescription"] = "Deletes ALL Ragdolls regardless the type of ragdoll for performance",
+            ["DisplayTitle"] = "Delete All Ragdolls",
+            ["LayoutOrder"] = 6,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {
+                ["Requirement"] = "PrivateServer"
+            },
+            ["ScriptFunction"] = function(self, Value)
+                if workspace:FindFirstChild("Ragdolls") and Value then
+                    workspace:FindFirstChild("Ragdolls"):ClearAllChildren()
                 end
             end
         },
@@ -807,6 +890,31 @@ local FeatureLoadout; FeatureLoadout = {
                 end
             end
         },
+        ["OfficialJoin"] = {
+            ["DisplayDescription"] = "Makes you join the official forsaken game",
+            ["DisplayTitle"] = "Join the official version",
+            ["LayoutOrder"] = 14,
+            ["Savable"] = false,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {
+                ["Requirement"] = "OfficialGame~true"
+            },
+            ["ScriptFunction"] = function(self, Value)
+                if Value and not workspace:GetAttribute("LoadingTeleport") then
+                    workspace:SetAttribute("LoadingTeleport",true)
+                    local A = workspace:FindFirstChild("Sounds") and workspace.Sounds:ClearAllChildren()
+                    local B = workspace:FindFirstChild("Themes") and workspace.Themes:ClearAllChildren()
+                    PlaySound("deadJOutIaw_Nova",{["TimePosition"] = 0.4})
+                    local OtherValue,OtherInstance = GetValue("Rejoin")
+                    OtherInstance:SetAttribute("Requirement",true)
+                    task.wait(0.5)
+                    game:GetService("ExperienceService"):LaunchExperience({placeId = 83645629621104})
+                elseif workspace:GetAttribute("LoadingTeleport") then
+                    self.Instance.Value = true
+                end
+            end
+        },
         ["Rejoin"] = {
             ["DisplayDescription"] = "Makes you rejoin the exact same server",
             ["DisplayTitle"] = "Rejoin",
@@ -821,6 +929,8 @@ local FeatureLoadout; FeatureLoadout = {
                     local A = workspace:FindFirstChild("Sounds") and workspace.Sounds:ClearAllChildren()
                     local B = workspace:FindFirstChild("Themes") and workspace.Themes:ClearAllChildren()
                     PlaySound("deadJOutIaw_Nova",{["TimePosition"] = 0.4})
+                    local OtherValue,OtherInstance = GetValue("OfficialJoin")
+                    OtherInstance:SetAttribute("Requirement",true)
                     task.wait(0.25)
                     if workspace:GetAttribute("ServerType") == "VIP" then
                         game:GetService("TeleportService"):Teleport(game.PlaceId)
@@ -897,7 +1007,7 @@ for i,v in PlusMenu.SettingsContainer.Contents:QueryDescendants("Frame,ImageLabe
 
 -- Functions --
 
-local function ColoredPrint(Text, Icon, Color)
+function ColoredPrint(Text, Icon, Color)
     task.spawn(function()
         task.spawn(function()
             if not _G.Initialized and not _G.Initizalling then
@@ -1026,6 +1136,7 @@ function PlaySound(SoundName,Settings,KeepPlaying)
                 Sound:Play()
             end
             Debris:AddItem(Sound, Sound.TimeLength + 1)
+            return Sound
         end)
     else
         warn("Failed to play sound: ".. tostring(SoundName))
@@ -1113,6 +1224,14 @@ local function SetButtonState(Active)
     end)
 end
 
+function GetValue(FeatureName)
+    local FeatureInstance = PlusFolderSettings:FindFirstChild(FeatureName,true)
+    if FeatureInstance then
+        return FeatureInstance.Value,FeatureInstance
+    end
+    return nil
+end
+
 local function GetFunction(...)
     for i,v in table.pack(...) do
         if v and typeof(v) == "function" then
@@ -1155,7 +1274,7 @@ local function CheckDistance(Highlight, TargetRoot, Settings)
         end
         if Distance >= Settings["MinDistance"] then
             local TransparencyAmount = math.clamp(1 - math.clamp((Distance - Settings["MinDistance"]) / (Settings["MaxDistance"] - Settings["MinDistance"]), 0, 1), 0.45, 1)
-            local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount, OutlineTransparency = TransparencyAmount < 0.8 and TransparencyAmount - 0.2 or TransparencyAmount})
+            local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount + 0.05, OutlineTransparency = TransparencyAmount <= 0.95 and TransparencyAmount - 0.05 or TransparencyAmount})
             Tween.Parent = Highlight
             Tween:Play()
             Debris:AddItem(Tween, 0.1)
@@ -1171,13 +1290,13 @@ end
 local function CreateDynamicHighlight(Enabled,ItemInstance,TargetRoot,Settings)
     Settings = type(Settings) == "table" and Settings or {["MaxDistance"] = 100,["MinDistance"] = 10,["Color"] = Color3.new(1,1,1)}
     local Highlight = ItemInstance:QueryDescendants("Highlight[$Dynamic]")
-    if Enabled and FeatureLoadout["Visuals"]["ESP"]["Instance"].Value then
+    if Enabled and GetValue("ESP") then
         if not Highlight[1] then
             Highlight = Instance.new("Highlight")
             Highlight.Name = HttpService:GenerateGUID(false)
-            Highlight.FillColor = Settings.Color
             local H, S, V = Settings.Color:ToHSV()
-            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 0.65)
+            Highlight.FillColor = Color3.fromHSV(H, S, V * 0.8)
+            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 1.1)
             Highlight:SetAttribute("Dynamic",true)
             Highlight.Parent = ItemInstance
             Highlight.Adornee = ItemInstance
@@ -1186,9 +1305,9 @@ local function CreateDynamicHighlight(Enabled,ItemInstance,TargetRoot,Settings)
             CheckDistance(Highlight, TargetRoot, Settings)
         else
             Highlight = Highlight[1]
-            Highlight.FillColor = Settings.Color
             local H, S, V = Settings.Color:ToHSV()
-            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 0.65)
+            Highlight.FillColor = Color3.fromHSV(H, S, V * 0.8)
+            Highlight.OutlineColor = Color3.fromHSV(H, S, V * 1.1)
             CheckDistance(Highlight, TargetRoot, Settings)
         end
     elseif Highlight[1] then
@@ -1285,6 +1404,7 @@ function HandleNoliNPC(Value)
         for i,v in workspace.Players.Killers:GetChildren() do
             if v.Name:lower() == "noli" and not Players:GetPlayerFromCharacter(v) then
                 v.Parent = Lighting
+                v:PivotTo(v:GetPivot() * CFrame.new(0,-100,0))
             end
         end
         if workspace:FindFirstChild("Themes") then
@@ -1295,8 +1415,34 @@ function HandleNoliNPC(Value)
             end
         end
     else
-        if Lighting:FindFirstChild("Noli") then
-            Lighting.Noli.Parent = workspace.Players.Killers
+        for i,v in Lighting:GetChildren() do
+            if v.Name:lower() == "noli" then
+                v.Parent = InGame
+                v:PivotTo(v:GetPivot() * CFrame.new(0,100,0))
+            end
+        end
+    end
+end
+
+function Handle007n7NPC(Value)
+    if Value then
+        for i,v in InGame:GetChildren() do
+            if v.Name:lower() == "007n7" and not Players:GetPlayerFromCharacter(v) then
+                v.Parent = Lighting
+                if v:FindFirstChild("HumanoidRootPart") then
+                    v:FindFirstChild("HumanoidRootPart").ChildAdded:Connect(function(Child)
+                        if Child:IsA("Sound") and GetValue("Disable007n7NPC") then
+                            Child:Destroy()
+                        end
+                    end)
+                end
+            end
+        end
+    else
+        for i,v in Lighting:GetChildren() do
+            if v.Name:lower() == "007n7" then
+                v.Parent = InGame
+            end
         end
     end
 end
@@ -1333,7 +1479,7 @@ function GoUnder(Value)
     local Offset = 15
     if Value == nil then
         IsUnderground = false
-        Value = FeatureLoadout["Features"]["Invincible"]["Instance"].Value
+        Value = GetValue("Invincible")
     end
     if Value and not SideBar:GetAttribute("WasVisible") and not IsUnderground then
         IsUnderground = false
@@ -1362,7 +1508,7 @@ function GoUnder(Value)
             FeatureLoadout["Features"]["Invincible"]["Instance"].Value = false
             task.wait(0.03)
             LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
-            if game.GameId == 6331902150 or game.GameId == 7464167604 then
+            if GetValue("OfficialGame") then
                 StarterGui:SetCore("SendNotification",
                     {
                         Title = "Fail",
@@ -1392,7 +1538,7 @@ function GoUnder(Value)
 end
 
 function Check(ValueInstance)
-    if FeatureLoadout["Features"]["AntiSlowness"]["Instance"] and FeatureLoadout["Features"]["AntiSlowness"]["Instance"].Value then
+    if GetValue("AntiSlowness") then
         if ValueInstance then
             if ValueInstance.Name == "DirectionalMovement" or ValueInstance.Name == "FixingGenerator" then
                 if ValueInstance.Value < 1 then
@@ -1403,6 +1549,29 @@ function Check(ValueInstance)
             end
         end
     end
+end
+
+function TableValueFind(Table, MatchFn, Seen)
+    if type(Table) ~= "table" or type(MatchFn) ~= "function" then
+        return nil
+    end
+    Seen = Seen or {}
+    if Seen[Table] then
+        return nil
+    end
+    Seen[Table] = true
+
+    for Key, Value in Table do
+        if MatchFn(Key, Value) then
+            return Key, Value, Table
+        elseif type(Value) == "table" then
+            local FoundKey, FoundValue, FoundParent = TableValueFind(Value, MatchFn, Seen)
+            if FoundKey ~= nil then
+                return FoundKey, FoundValue, FoundParent
+            end
+        end
+    end
+    return nil
 end
 
 local function GetAnimationType(ID)
@@ -1425,18 +1594,13 @@ end
 
 local function AddOverridenAnimation(ID)
     if LocalCharacter and ID then
+        if OverriddenAnimations[ID] then
+            return table.unpack(OverriddenAnimations[ID])
+        end
         local Animator = LocalHumanoid and LocalHumanoid:FindFirstChildOfClass("Animator")
         local OverrideFolder = LocalCharacter:FindFirstChild("OverrideAnimation") or Instance.new("Folder", LocalCharacter)
         OverrideFolder.Name = "OverrideAnimation"
         local AnimType = GetAnimationType(ID) or "Unknown"
-        if OverrideFolder:FindFirstChild(AnimType .. tostring(ID)) then
-            local Tracks = Animator:GetPlayingAnimationTracks()
-            for i,v in pairs(Tracks) do
-                if v.Animation and v.Animation == OverrideFolder:FindFirstChild(AnimType .. tostring(ID)) then
-                    return v,OverrideFolder:FindFirstChild(AnimType .. tostring(ID))
-                end
-            end
-        end
         local Animation = Instance.new("Animation")
         Animation.Name = AnimType .. tostring(ID)
         Animation.AnimationId = tostring(ID):find("id") and tostring(ID) or "http://www.roblox.com/asset/?id=" .. tostring(ID)
@@ -1445,6 +1609,7 @@ local function AddOverridenAnimation(ID)
         local Animator = LocalHumanoid and LocalHumanoid:FindFirstChildOfClass("Animator")
         if Animator then
             local Track = Animator:LoadAnimation(Animation)
+            OverriddenAnimations[ID] = {Track,Animation}
             return Track,Animation
         end
     else
@@ -1462,6 +1627,7 @@ function ChangeTrackWithOverride(Track,AnimationName,SkipOverride)
             local AnimationString = AllAnimations[AnimationName] and AllAnimations[AnimationName][AnimType]
             local OverrideTrack,Animation = AddOverridenAnimation(AnimationString)
             if OverrideTrack and Animation then
+                ColoredPrint("Type: " .. tostring(AnimType), "info", Color3.fromRGB(0, 178, 127))
                 BindableShouldStop:Fire()
                 OverrideTrack.Looped = Track.Looped
                 OverrideTrack:Play(SkipOverride and 0 or 0.1)
@@ -1470,7 +1636,7 @@ function ChangeTrackWithOverride(Track,AnimationName,SkipOverride)
                     LastTrack = Track
                 end
                 BindableShouldStop.Event:Once(function()
-                    local AnimationPreset = FeatureLoadout["Features"]["AnimationChanger"] and FeatureLoadout["Features"]["AnimationChanger"]["Instance"]
+                    local AnimationPreset = GetValue("AnimationChanger")
                     if AnimationPreset.Value == "Original" then
                         OverrideTrack:Stop()
                         LastTrack:Play()
@@ -1570,7 +1736,11 @@ FeatureLoadout["ExploitFunctions"]["TabAttributes"]["DisplayTitle"] = string.for
     RichTextGradientColor("V"..Version,{Color3.fromRGB(87, 160, 255),Color3.fromRGB(0, 132, 255)})
 ) -- Tryna edit something here?? i can see that... you ain taking no credit you know..
 
-FeatureLoadout["Visuals"]["DisableNoliNPC"]["DisplayTitle"] = string.format("Disables %s NPC", RichTextGradientColor("Noli's",{Color3.fromRGB(130, 72, 255), Color3.fromRGB(77, 0, 185)}))
+FeatureLoadout["Visuals"]["DisableNoliNPC"]["DisplayTitle"] = string.format("Disable %s NPC", RichTextGradientColor("Noli's",{Color3.fromRGB(130, 72, 255), Color3.fromRGB(77, 0, 185)}))
+FeatureLoadout["Visuals"]["Disable007n7NPC"]["DisplayTitle"] = string.format("Disable %s NPC", RichTextGradientColor("007n7's",{Color3.fromRGB(117, 161, 255), Color3.fromRGB(13, 70, 175)}))
+FeatureLoadout["Features"]["NoliControl"]["DisplayTitle"] = string.format("Better %s", RichTextGradientColor("Void Rush",{Color3.fromRGB(240, 90, 253), Color3.fromRGB(141, 0, 197)}))
+FeatureLoadout["Features"]["ControllableDash"]["DisplayTitle"] = string.format("Make %s Dash Controllable", RichTextGradientColor("Coolkidd's",{Color3.fromRGB(255, 22, 22), Color3.fromRGB(175, 13, 13)}))
+
 
 local ThreadManager = {Threads = {}}
 function ThreadManager:Start(Name,Function,Interval)
@@ -1591,6 +1761,7 @@ task.spawn(function()
         local Module = require(
             ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
         )
+        
         if Module and type(Module) == "table" and Module["StaminaChanged"] then
             IsRequireSupported = true
             return {Module}
@@ -1618,8 +1789,11 @@ if IsRequireSupported then
     local ConfigSurvivor = SurvivorAssets:QueryDescendants("ModuleScript#Config")
     for i,ConfigModule in table.move(ConfigKiller, 1, #ConfigKiller, #ConfigSurvivor+1, ConfigSurvivor) do
         if ConfigModule.Parent:IsA("Model") then continue end
-        local Animations = require(ConfigModule)
-        local AnimationData = Animations and Animations.Animations
+        local ConfigData = require(ConfigModule)
+        local AnimationData = ConfigData and ConfigData.Animations
+        if ConfigModule.Parent.Name == "Noli" and ConfigData and TableValueFind(ConfigData, function(Key, Value) return type(Key) == "string" and Key:find("InitialTurnMult") end) then
+            NoliConfig = ConfigData
+        end
         if not AnimationData then continue end
         AllAnimations[ConfigModule.Parent.Name] = AnimationData
     end
@@ -1635,6 +1809,10 @@ if IsRequireSupported then
     end
 end
 
+if not NoliConfig then
+    FeatureLoadout["Features"]["NoliControl"]["ExtraData"]["Requirement"] = true
+end
+
 local function ActionOnCharacter(Character)
     task.spawn(function()
         SetButtonState(false)
@@ -1643,10 +1821,10 @@ local function ActionOnCharacter(Character)
         LocalHead = LocalCharacter and (LocalCharacter:FindFirstChild("Head") or LocalCharacter:WaitForChild("Head",2)) or nil
         LocalRoot = LocalCharacter and ((LocalHumanoid and LocalHumanoid.RootPart) or LocalCharacter:FindFirstChild("HumanoidRootPart") or LocalCharacter:WaitForChild("HumanoidRootPart",2)) or nil
         SpeedMultipliers = LocalCharacter and (Character:FindFirstChild("SpeedMultipliers") or Character:WaitForChild("SpeedMultipliers", 5)) or nil
+        OverriddenAnimations = {}
         local Animator = LocalHumanoid and LocalHumanoid:FindFirstChildOfClass("Animator")
-        local AnimationPreset = FeatureLoadout["Features"]["AnimationChanger"] and FeatureLoadout["Features"]["AnimationChanger"]["Instance"]
         Animator.AnimationPlayed:Connect(function(Track)
-            ChangeTrackWithOverride(Track,AnimationPreset.Value)
+            ChangeTrackWithOverride(Track,(GetValue("AnimationChanger")))
         end)
         if SpeedMultipliers ~= nil and typeof(SpeedMultipliers) == "Instance" then
             SpeedMultipliers.ChildAdded:Connect(function(Child)
@@ -1664,11 +1842,31 @@ local function ActionOnCharacter(Character)
             repeat task.wait() until LocalRoot
         end
         task.delay(0.25,function()
-            HandleAllowJumping((FeatureLoadout["Features"]["EnableJumping"]["Instance"] and FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value) or false)
+            HandleAllowJumping(GetValue("EnableJumping"))
         end)
         LocalRoot:GetPropertyChangedSignal("Anchored"):Connect(function()
             if not LocalRoot.Anchored then
                 task.delay(0.5,GoUnder)
+            end
+        end)
+        LocalRoot.ChildAdded:Connect(function(Child)
+            if Child:IsA("LinearVelocity") and LocalHumanoid then
+                local OriginalVelocity = Child.LineDirection
+                local OriginalVelocityMag = Child.LineDirection.Magnitude
+                for i,v in SpeedMultipliers:GetChildren() do
+                    if v.Name == "HinderedMovement" and GetValue("ControllableDash") and v.Value == 0 then
+                        v.Value = 0.005
+                    end
+                end
+                local function UpdateVelocity()
+                    if GetValue("ControllableDash") then
+                        Child.LineDirection = LocalHumanoid.MoveDirection * OriginalVelocityMag
+                    else
+                        Child.LineDirection = OriginalVelocity
+                    end
+                end
+                UpdateVelocity()
+                LocalHumanoid:GetPropertyChangedSignal("MoveDirection"):Connect(UpdateVelocity)
             end
         end)
         task.wait(0.05)
@@ -1682,20 +1880,20 @@ local function ActionOnCharacter(Character)
                     local CenterStaminaCounter = TempUI:FindFirstChild("CenterStaminaCounter")
                     if CenterStaminaCounter then
                         CenterStaminaCounter:SetAttribute("WasVisible", CenterStaminaCounter.Visible)
-                        CenterStaminaCounter.Visible = FeatureLoadout["Features"]["StaminaPreset"]["Instance"].Value ~= "Infinite" and CenterStaminaCounter:GetAttribute("WasVisible")
+                        CenterStaminaCounter.Visible = GetValue("StaminaPreset") ~= "Infinite" and CenterStaminaCounter:GetAttribute("WasVisible")
                     end
                     InfiniteStaminaElement.Name = "InfiniteAmount"
                     InfiniteStaminaElement.Text = "∞"
                     InfiniteStaminaElement.Parent = OriginalAmountUI.Parent
-                    InfiniteStaminaElement.Visible = FeatureLoadout["Features"]["StaminaPreset"]["Instance"].Value == "Infinite"
+                    InfiniteStaminaElement.Visible = GetValue("StaminaPreset") == "Infinite"
                     InfiniteStaminaElement.Size = UDim2.new(0.225,0,0.7,14)
-                    OriginalAmountUI.Visible = FeatureLoadout["Features"]["StaminaPreset"]["Instance"].Value ~= "Infinite"
+                    OriginalAmountUI.Visible = GetValue("StaminaPreset") ~= "Infinite"
                     local InfViewConnection;InfViewConnection = FeatureLoadout["Features"]["StaminaPreset"]["Instance"]:GetPropertyChangedSignal("Value"):Connect(function()
                         if InfiniteStaminaElement and OriginalAmountUI then
-                            InfiniteStaminaElement.Visible = FeatureLoadout["Features"]["StaminaPreset"]["Instance"].Value == "Infinite"
-                            OriginalAmountUI.Visible = FeatureLoadout["Features"]["StaminaPreset"]["Instance"].Value ~= "Infinite"
+                            InfiniteStaminaElement.Visible = GetValue("StaminaPreset") == "Infinite"
+                            OriginalAmountUI.Visible = GetValue("StaminaPreset") ~= "Infinite"
                             if CenterStaminaCounter then
-                                CenterStaminaCounter.Visible = FeatureLoadout["Features"]["StaminaPreset"]["Instance"].Value ~= "Infinite" and CenterStaminaCounter:GetAttribute("WasVisible")
+                                CenterStaminaCounter.Visible = GetValue("StaminaPreset") ~= "Infinite" and CenterStaminaCounter:GetAttribute("WasVisible")
                             end
                         else
                             InfViewConnection:Disconnect()
@@ -1707,7 +1905,7 @@ local function ActionOnCharacter(Character)
                 end
             end)
             for i,v in TempUI:QueryDescendants("#redFlash,#injuredVignette") do
-                v.Visible = not (FeatureLoadout["Miscellaneous"]["HideInjury"]["Instance"] and FeatureLoadout["Miscellaneous"]["HideInjury"]["Instance"].Value or false)
+                v.Visible = not GetValue("HideInjury")
             end
         end
     end)
@@ -1716,11 +1914,11 @@ end
 
 Lighting.ChildAdded:Connect(function(Child)
     if Child.Name == "HealthDesaturation" then
-        Child.Enabled = not (FeatureLoadout["Miscellaneous"]["HideInjury"]["Instance"] and FeatureLoadout["Miscellaneous"]["HideInjury"]["Instance"].Value or false)
+        Child.Enabled = not GetValue("HideInjury")
     end
 end)
 if Lighting:FindFirstChild("HealthDesaturation") then
-    Lighting.HealthDesaturation.Enabled = not (FeatureLoadout["Miscellaneous"]["HideInjury"]["Instance"] and FeatureLoadout["Miscellaneous"]["HideInjury"]["Instance"].Value or false)
+    Lighting.HealthDesaturation.Enabled = not GetValue("HideInjury")
 end
 
 local getgc = GetFunction(getgc, get_gc)
@@ -1748,7 +1946,6 @@ if FeatureLoadout["ExploitFunctions"]["getgc"]["DefaultInstanceValue"] then
     task.spawn(function()
         if game.GameId ~= 6331902150 then
             task.wait(0.5)
-            local CurrentDGT = workspace.DistributedGameTime
             for i,v in getgc(true) do
                 if type(v) == type({}) then
                     if not rawget(v,"Run") then if i%250 == 0 then task.wait() end continue end
@@ -1818,10 +2015,13 @@ for TabName, TabContents in FeatureLoadout do
             NewInstance.Name = SettingName
             NewInstance.Value = SettingData.DefaultInstanceValue
             if SettingData["Savable"] and FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] then
-                if TableData[SettingName] ~= nil then
+                if TableData[SettingName] ~= nil and NewInstance:GetAttribute("Requirement") ~= true then
                     NewInstance.Value = TableData[SettingName]
                 end
                 NewInstance:GetPropertyChangedSignal("Value"):Connect(function()
+                    if NewInstance:GetAttribute("Requirement") == true then
+                        return
+                    end
                     local TableData2 = HttpService:JSONDecode(ReturnData("Data.txt", true))
                     TableData2[SettingName] = SettingData.DefaultInstanceValue ~= NewInstance.Value and NewInstance.Value or nil
                     ChangeData("Data.txt", HttpService:JSONEncode(TableData2), true)
@@ -1846,7 +2046,7 @@ end
 task.spawn(function()
     local REvent = Network and Network:FindFirstChildOfClass("RemoteEvent")
     local Pr = PlayerData and PlayerData:FindFirstChild("Settings") and PlayerData.Settings:FindFirstChild("Pronouns",true)
-    if REvent and Pr then
+    if REvent and Pr and Pr.Value ~= "discord.gg/Fs47aNrdGF" then
         REvent:FireServer("UpdateSettings",{Pr, "discord.gg/Fs47aNrdGF"})
         REvent:FireServer("UpdateSettings",Pr, "discord.gg/Fs47aNrdGF")
     end
@@ -1856,7 +2056,7 @@ local hookmetamethod = GetFunction(hookmetamethod, hook_metamethod)
 if not hookmetamethod then
     FeatureLoadout["ExploitFunctions"]["hookmetamethod"]["DefaultInstanceValue"] = false
 else
-    if game.GameId == 6331902150 or game.GameId == 7464167604 then
+    if GetValue("OfficialGame") then
         export type DesyncHook = {DesyncNumber:number,BufferCorruption:buffer}
         export type CorruptArguments = {Number:number,Table1:table,NilObject:any,Table2:table}
         local HookSuccess, HookResult = pcall(function()
@@ -1906,11 +2106,13 @@ else
     end
 end
 
-for i,v in Players:GetPlayers() do
-    if v ~= LocalPlayer then
-        HandlePrivacySettings(v)
+task.spawn(function()
+    for i,v in Players:GetPlayers() do
+        if v ~= LocalPlayer then
+            HandlePrivacySettings(v)
+        end
     end
-end
+end)
 Players.PlayerAdded:Connect(function(Player)
     task.wait(2)
     HandlePrivacySettings(Player)
@@ -1922,11 +2124,11 @@ LocalPlayer.CharacterAdded:Connect(ActionOnCharacter)
 ActionOnCharacter(LocalCharacter or LocalPlayer.Character)
 task.delay(0.5,UpdatePlayerCrashDrop)
 
-workspace:WaitForChild("Map",20):WaitForChild("Ingame",20).ChildAdded:Connect(function(Child)
+InGame.ChildAdded:Connect(function(Child)
     if Child.Name == "Map" then
         GameMap = Child
         task.wait(0.5)
-        local Value = FeatureLoadout["Features"]["DisableKillerWalls"]["Instance"].Value
+        local Value = GetValue("DisableKillerWalls")
         local VertexColor = Value and Vector3.new(0,255,0) or Vector3.new(255,0,0)
         local Color = Value and Color3.new(0,1,0) or Color3.new(1,0,0)
         local KillerDoorsFolder = GameMap and (GameMap:FindFirstChild("KillerDoors",true) or GameMap:FindFirstChild("Killer Doors",true))
@@ -2008,18 +2210,17 @@ ThreadManager:Start("FeatureHandler", function()
         end
     end
 
-    if GameMap and GameMap.Parent then
+    if InGame and GameMap then
         task.spawn(function()
-            if FeatureLoadout["Automation"]["AutoPickup"]["Instance"] and FeatureLoadout["Automation"]["AutoPickup"]["Instance"].Value and LocalCharacter and LocalCharacter.Parent and LocalCharacter.Parent.Name == "Survivors" then
-                local Tools = GameMap.Parent:QueryDescendants("#Map > Tool")
-                local DroppedTools = GameMap.Parent.Parent:QueryDescendants("Folder > Tool")
+                local Tools = InGame:QueryDescendants("#Map > Tool")
+                local DroppedTools = InGame.Parent:QueryDescendants("Folder > Tool")
                 for i,v in table.move(Tools,1,#Tools,#DroppedTools+1,DroppedTools) do
-                    CreateDynamicHighlight(FeatureLoadout["Visuals"]["ItemsESP"]["Instance"].Value, v, v:FindFirstChildWhichIsA("BasePart"), {
+                    CreateDynamicHighlight((GetValue("ItemsESP")), v, v:FindFirstChildWhichIsA("BasePart"), {
                         ["MaxDistance"] = 100,
-                        ["MinDistance"] = 10,
-                        ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["ItemsColor"]["Instance"].Value]
+                        ["MinDistance"] = 12,
+                        ["Color"] = ColorPresets[GetValue("ItemsColor")]
                     })
-                    if v:IsA("Tool") and not LocalCharacter:FindFirstChild(v.Name) and not LocalPlayer:FindFirstChildOfClass("Backpack"):FindFirstChild(v.Name) and not v:GetAttribute("JustDropped") then
+                    if v:IsA("Tool") and not LocalCharacter:FindFirstChild(v.Name) and not LocalPlayer:FindFirstChildOfClass("Backpack"):FindFirstChild(v.Name) and not v:GetAttribute("JustDropped") and GetValue("AutoPickup") then
                         local ProximityPrompt = v:FindFirstChildWhichIsA("ProximityPrompt",true)
                         local Param = OverlapParams.new()
                         Param.FilterType = Enum.RaycastFilterType.Include
@@ -2036,33 +2237,28 @@ ThreadManager:Start("FeatureHandler", function()
                         end
                     end
                 end
-            end
         end)
         for i,v in GameMap:QueryDescendants("Model#Generator:has(#Main)") do
-            if FeatureLoadout["Visuals"]["GeneratorsCheck"]["Instance"].Value == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value == 100 then
+            if FeatureLoadout["Visuals"]["GeneratorsCheck"]["Instance"].Value == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value >= 100 then
                 CreateDynamicHighlight(false, v)
             elseif v:FindFirstChild("Progress") then
                 CreateDynamicHighlight(FeatureLoadout["Visuals"]["GeneratorsESP"]["Instance"].Value, v, v:FindFirstChild("Main") or v:WaitForChild("Main"), {
                     ["MaxDistance"] = 100,
-                    ["MinDistance"] = 10,
+                    ["MinDistance"] = 12,
                     ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["GeneratorsColor"]["Instance"].Value]
                 })
             end
         end
-        for i,v in workspace.Players:QueryDescendants("#Killers > Instance,#Survivors > Instance") do
-            if v ~= LocalPlayer.Character and Players:GetPlayerFromCharacter(v) ~= nil then
-                CreateDynamicHighlight(FeatureLoadout["Visuals"][v.Parent.Name.."ESP"].Instance.Value, v, v:FindFirstChild("HumanoidRootPart"), {
-                    ["MaxDistance"] = 100,
-                    ["MinDistance"] = 5,
-                    ["Color"] = ColorPresets[FeatureLoadout["Visuals"][v.Parent.Name.."Color"]["Instance"].Value]
-                })
-            else
-                CreateDynamicHighlight(false, v)
-            end
-        end
-    else 
-        for i,v in workspace:QueryDescendants("Highlight[$Dynamic]") do
-            v:Destroy()
+    end
+    for i,v in workspace.Players:QueryDescendants("#Killers > Instance,#Survivors > Instance") do
+        if v ~= LocalPlayer.Character and Players:GetPlayerFromCharacter(v) ~= nil then
+            CreateDynamicHighlight((GetValue(v.Parent.Name.."ESP")), v, v:FindFirstChild("HumanoidRootPart"), {
+                ["MaxDistance"] = 100,
+                ["MinDistance"] = 10,
+                ["Color"] = ColorPresets[GetValue(v.Parent.Name.."Color")]
+            })
+        else
+            CreateDynamicHighlight(false, v)
         end
     end
 end,0.1)
@@ -2156,9 +2352,9 @@ PlayerGui.ChildAdded:Connect(function(Child)
     if Child.Name == "PuzzleUI" then
         local ClonedLoadUI = LoadUI:Clone()
         ClonedLoadUI.Parent = Child.Container.GridHolder
-        ClonedLoadUI.Visible = FeatureLoadout["Automation"]["AutoGeneratorPuzzle"]["Instance"].Value
+        ClonedLoadUI.Visible = GetValue("AutoGeneratorPuzzle")
         FeatureLoadout["Automation"]["AutoGeneratorPuzzle"]["Instance"]:GetPropertyChangedSignal("Value"):Connect(function()
-            ClonedLoadUI.Visible = FeatureLoadout["Automation"]["AutoGeneratorPuzzle"]["Instance"].Value
+            ClonedLoadUI.Visible = GetValue("AutoGeneratorPuzzle")
         end)
         task.spawn(function()
 	        while task.wait() and ClonedLoadUI and ClonedLoadUI.Parent do
@@ -2177,13 +2373,20 @@ end)
 if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
     workspace.Players.Killers.ChildAdded:Connect(function(Child)
         task.wait(0.5)
-        HandleNoliNPC(FeatureLoadout["Visuals"]["DisableNoliNPC"]["Instance"] and FeatureLoadout["Visuals"]["DisableNoliNPC"]["Instance"].Value)
+        HandleNoliNPC(GetValue("DisableNoliNPC"))
+    end)
+end
+
+if InGame then
+    InGame.ChildAdded:Connect(function(Child)
+        task.wait(0.02)
+        Handle007n7NPC(GetValue("Disable007n7NPC"))
     end)
 end
 
 RoundEvent.Event:Connect(function(Data)
     if Data == "Start" then
-        if FeatureLoadout["Miscellaneous"]["ShowChat"]["Instance"].Value then
+        if GetValue("ShowChat") then
             TextChatService.ChatWindowConfiguration.Enabled = true
         end
     else
@@ -2199,8 +2402,8 @@ workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(functi
     end
 end)
 
-if workspace.Map:FindFirstChild("Ingame") then
-    workspace.Map.Ingame.ChildAdded:Connect(function(Child)
+if InGame then
+    InGame.ChildAdded:Connect(function(Child)
         if Child:IsA("Tool") then
             Child:SetAttribute("JustDropped", true)
             task.delay(1.5, function()
@@ -2212,27 +2415,35 @@ if workspace.Map:FindFirstChild("Ingame") then
             task.wait()
             for i,v in Child:GetChildren() do
                 if v:IsA("BasePart") then
-                    v.CanTouch = not FeatureLoadout["Features"]["DisableToxicTrails"]["Instance"].Value
+                    v.CanTouch = not GetValue("DisableToxicTrails")
                 end
             end
         elseif Child:IsA("Folder") and (Child.Name):find("Shadows") then
             task.wait()
             for i,v in Child:GetChildren() do
                 if v:IsA("BasePart") then
-                    v.CanTouch = not FeatureLoadout["Features"]["DisableFootprints"]["Instance"].Value
+                    v.CanTouch = not GetValue("DisableFootprints")
                 end
             end
             if not Child:GetAttribute("Checked") then
                 Child:SetAttribute("Checked", true)
                 Child.ChildAdded:Connect(function(GrandChild)
                     if GrandChild:IsA("BasePart") then
-                        GrandChild.CanTouch = not FeatureLoadout["Features"]["DisableFootprints"]["Instance"].Value
+                        GrandChild.CanTouch = not GetValue("DisableFootprints")
                     end
                 end)
             end
         elseif Child.Name == "SpikeCollision" then
-            Child.Size = FeatureLoadout["Features"]["SmallerSpikeCollisions"]["Instance"].Value and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
-            Child.Shape = FeatureLoadout["Features"]["SmallerSpikeCollisions"]["Instance"].Value and Enum.PartType.Cylinder or Enum.PartType.Block
+            Child.Size = GetValue("SmallerSpikeCollisions") and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
+            Child.Shape = GetValue("SmallerSpikeCollisions") and Enum.PartType.Cylinder or Enum.PartType.Block
+        end
+    end)
+end
+
+if workspace:FindFirstChild("Ragdolls") then
+    workspace:FindFirstChild("Ragdolls").ChildAdded:Connect(function(Ragdoll)
+        if GetValue("DeleteRagdolls") then
+            workspace:FindFirstChild("Ragdolls"):ClearAllChildren()
         end
     end)
 end
@@ -2808,23 +3019,79 @@ function Initializer.Start()
                     SettingUI.Instance.LayoutOrder = LayoutOrder + v10
                     SettingUI.Instance.Parent = Contents
                     local Requirement = SettingInstance:GetAttribute("Requirement")
-                    if Requirement then
-                        local BindableCallCheckRequirement = Instance.new("BindableEvent")
-                        local Requirements = {}
-                        BindableCallCheckRequirement.Event:Connect(function()
-                            local AllTrue = true                            
-                            for i,v in pairs(Requirements) do
-                                if not v then
-                                    AllTrue = false
-                                    break
+                    local BindableCallCheckRequirement = Instance.new("BindableEvent")
+                    local Requirements = {}
+                    BindableCallCheckRequirement.Event:Connect(function()
+                        local AllTrue = true                            
+                        for i,v in pairs(Requirements) do
+                            if not v then
+                                AllTrue = false
+                                break
+                            end
+                        end
+                        if AllTrue then
+                            SettingUI.Instance.Visible = true
+                        else
+                            SettingUI.Instance.Visible = false
+                        end
+                    end)
+                    if type(Requirement) == "string" and Requirement:find("|") then
+                        for i,v in (string.split(Requirement, "|")) do
+                            Requirements[v] = false
+                        end
+                    else
+                        Requirements = Requirement and {[Requirement] = false} or {}
+                    end
+                    for Requirement,v in pairs(Requirements) do
+                        Requirements[Requirement] = false
+                        local InstanceValue = type(Requirement) == "string" and PlusFolderSettings:FindFirstChild(Requirement, true) or nil
+                        if InstanceValue and Requirement ~= true then
+                            Requirements[Requirement] = InstanceValue.Value
+                            InstanceValue:GetPropertyChangedSignal("Value"):Connect(function()
+                                Requirements[Requirement] = InstanceValue.Value
+                                BindableCallCheckRequirement:Fire()
+                            end)
+                        elseif Requirement == true then
+                            Requirements[Requirement] = false
+                            BindableCallCheckRequirement:Fire()
+                        elseif Requirement:find("=") then
+                            local SplitData = string.split(Requirement, "=")
+                            local Value = SplitData[2]
+                            local CheckerInstance = PlusFolderSettings:FindFirstChild(SplitData[1], true)
+                            if CheckerInstance then
+                                local function Update()
+                                    if tostring(CheckerInstance.Value) == Value or tostring(CheckerInstance.Value):lower() == "both" or tostring(CheckerInstance.Value):lower() == "all" then
+                                        Requirements[Requirement] = true
+                                    else
+                                        Requirements[Requirement] = false
+                                    end
+                                    BindableCallCheckRequirement:Fire()
                                 end
+                                Update()
+                                CheckerInstance:GetPropertyChangedSignal("Value"):Connect(Update)
                             end
-                            if AllTrue then
-                                SettingUI.Instance.Visible = true
-                            else
-                                SettingUI.Instance.Visible = false
+                        elseif Requirement:find("~") then
+                            local SplitData = string.split(Requirement, "~")
+                            local Value = SplitData[2]
+                            local CheckerInstance = PlusFolderSettings:FindFirstChild(SplitData[1], true)
+                            if CheckerInstance then
+                                local function Update()
+                                    if tostring(CheckerInstance.Value) ~= Value then
+                                        Requirements[Requirement] = true
+                                    else
+                                        Requirements[Requirement] = false
+                                    end
+                                    BindableCallCheckRequirement:Fire()
+                                end
+                                Update()
+                                CheckerInstance:GetPropertyChangedSignal("Value"):Connect(Update)
                             end
-                        end)
+                        end
+                    end
+                    BindableCallCheckRequirement:Fire()
+                    SettingInstance:GetAttributeChangedSignal("Requirement"):Connect(function()
+                        Requirement = SettingInstance:GetAttribute("Requirement")
+                        Requirements = {}
                         if type(Requirement) == "string" and Requirement:find("|") then
                             for i,v in (string.split(Requirement, "|")) do
                                 Requirements[v] = false
@@ -2832,66 +3099,8 @@ function Initializer.Start()
                         else
                             Requirements = Requirement and {[Requirement] = false} or {}
                         end
-                        for Requirement,v in pairs(Requirements) do
-                            Requirements[Requirement] = false
-                            local InstanceValue = type(Requirement) == "string" and PlusFolderSettings:FindFirstChild(Requirement, true) or nil
-                            if InstanceValue and Requirement ~= true then
-                                Requirements[Requirement] = InstanceValue.Value
-                                InstanceValue:GetPropertyChangedSignal("Value"):Connect(function()
-                                    Requirements[Requirement] = InstanceValue.Value
-                                    BindableCallCheckRequirement:Fire()
-                                end)
-                            elseif Requirement == true then
-                                Requirements[Requirement] = false
-                                BindableCallCheckRequirement:Fire()
-                            elseif Requirement:find("=") then
-                                local SplitData = string.split(Requirement, "=")
-                                local Value = SplitData[2]
-                                local CheckerInstance = PlusFolderSettings:FindFirstChild(SplitData[1], true)
-                                if CheckerInstance then
-                                    local function Update()
-                                        if tostring(CheckerInstance.Value) == Value or tostring(CheckerInstance.Value):lower() == "both" or tostring(CheckerInstance.Value):lower() == "all" then
-                                            Requirements[Requirement] = true
-                                        else
-                                            Requirements[Requirement] = false
-                                        end
-                                        BindableCallCheckRequirement:Fire()
-                                    end
-                                    Update()
-                                    CheckerInstance:GetPropertyChangedSignal("Value"):Connect(Update)
-                                end
-                            elseif Requirement:find("~") then
-                                local SplitData = string.split(Requirement, "~")
-                                local Value = SplitData[2]
-                                local CheckerInstance = PlusFolderSettings:FindFirstChild(SplitData[1], true)
-                                if CheckerInstance then
-                                    local function Update()
-                                        if tostring(CheckerInstance.Value) ~= Value then
-                                            Requirements[Requirement] = true
-                                        else
-                                            Requirements[Requirement] = false
-                                        end
-                                        BindableCallCheckRequirement:Fire()
-                                    end
-                                    Update()
-                                    CheckerInstance:GetPropertyChangedSignal("Value"):Connect(Update)
-                                end
-                            end
-                        end
                         BindableCallCheckRequirement:Fire()
-                        SettingInstance:GetAttributeChangedSignal("Requirement"):Connect(function()
-                            Requirement = SettingInstance:GetAttribute("Requirement")
-                            Requirements = {}
-                            if type(Requirement) == "string" and Requirement:find("|") then
-                                for i,v in (string.split(Requirement, "|")) do
-                                    Requirements[v] = false
-                                end
-                            else
-                                Requirements = Requirement and {[Requirement] = false} or {}
-                            end
-                            BindableCallCheckRequirement:Fire()
-                        end)
-                    end
+                    end)
                     local ResetButton = Templates.Reset:Clone()
                     ResetButton.Parent = SettingUI.Instance
                     ResetButton.MouseButton1Click:Connect(function()
@@ -3133,7 +3342,7 @@ local function UICheck()
         end
         for i,v in PlusMenu.SettingsContainer.Contents:GetChildren() do
             if v:IsA("ImageLabel") then
-                v.ImageTransparency = 0.3
+                v.ImageTransparency = 0.4
             elseif v:IsA("Frame") then
                 for i,v in v:GetChildren() do
                     if v:IsA("ImageLabel") or v:IsA("ImageButton") then
