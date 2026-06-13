@@ -18,7 +18,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.4"
+local Version = "1.42"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -40,8 +40,10 @@ local PulloutFramePlus = SidePlusButton and SidePlusButton:FindFirstChild("Pullo
 local NewUIVersion = not PulloutFramePlus
 local SettingsMenu = MainUI:FindFirstChild("SettingsScreen") or MainUI:WaitForChild("SettingsScreen", 20)
 local PlusMenu = SettingsMenu and SettingsMenu:Clone()
-local KillersFolder = workspace:WaitForChild("Players"):WaitForChild("Killers")
-local SurvivorsFolder = workspace:WaitForChild("Players"):WaitForChild("Survivors")
+local PlayersFolder = workspace:FindFirstChild("Players")
+local KillersFolder = PlayersFolder and PlayersFolder:FindFirstChild("Killers")
+local SurvivorsFolder = PlayersFolder and PlayersFolder:FindFirstChild("Survivors")
+local RagdollsFolder = workspace:FindFirstChild("RagdollsFolder")
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -59,13 +61,12 @@ local RoundEvent = Instance.new("BindableEvent")
 local BindableShouldStop = Instance.new("BindableEvent")
 local UIScale = Instance.new("UIScale")
 local IsUnderground,IsFixingGenerator,WarnedAboutFilesCompatability = false,false,false
-local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,IsPoisonOnPosition,GoUnder,HandleAllowJumping,HandleNoliNPC,ChangeTrackWithOverride,LastTrack,NoliConfig,TableValueFind,ColoredPrint,Handle007n7NPC,GetValue
+local OverriddenAnimations,AllAnimations,Values = {},{},{}
+local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,GoUnder,HandleAllowJumping,HandleNoliNPC,ChangeTrackWithOverride,LastTrack,NoliConfig,TableValueFind,ColoredPrint,Handle007n7NPC,GetValue
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-06-12"
-local OverriddenAnimations = {}
-local Worked,CurrentGameVersion = pcall(function() return MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] end) ; CurrentGameVersion = Worked and CurrentGameVersion or GameVersionForScript
-local AllAnimations = {}
+local GameVersionForScript = "2026-06-13"
+local Worked,CurrentGameVersion = pcall(function() return MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] end); CurrentGameVersion = Worked and CurrentGameVersion or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
           ["TabAttributes"] = {
@@ -402,9 +403,8 @@ local FeatureLoadout; FeatureLoadout = {
                 if Value == "Original" then
                     BindableShouldStop:Fire()
                 else
-                    
-                    local Animator = LocalHumanoid and LocalHumanoid:FindFirstChildOfClass("Animator")
-                    if ChangeTrackWithOverride then
+                    local Animator = ChangeTrackWithOverride and LocalHumanoid and LocalHumanoid:FindFirstChildOfClass("Animator")
+                    if Animator then
                         for i,v in Animator:GetPlayingAnimationTracks() do
                             ChangeTrackWithOverride(v,Value,true)
                         end
@@ -504,10 +504,22 @@ local FeatureLoadout; FeatureLoadout = {
             ["ExtraData"] = {},
             ["ScriptFunction"] = function(self, Value) end
         },
+        ["ShowText"] = {
+            ["DisplayDescription"] = "Show text over the highlighted objects <b>(NO FUNCTIONALITY)</b>",
+            ["DisplayTitle"] = "Show Text",
+            ["LayoutOrder"] = 3,
+            ["Savable"] = true,
+            ["InstanceType"] = "BoolValue",
+            ["DefaultInstanceValue"] = false,
+            ["ExtraData"] = {
+                ["Requirement"] = true
+            },
+            ["ScriptFunction"] = function(self, Value) end
+        },
         ["KillersESP"] = {
             ["DisplayDescription"] = "Enables ESP for the killer(s)",
             ["DisplayTitle"] = "Killer(s) (ESP)",
-            ["LayoutOrder"] = 3,
+            ["LayoutOrder"] = 4,
             ["Savable"] = true,
             ["InstanceType"] = "BoolValue",
             ["DefaultInstanceValue"] = false,
@@ -519,7 +531,7 @@ local FeatureLoadout; FeatureLoadout = {
         ["KillersColor"] = {
             ["DisplayDescription"] = "Select a Color for Killer(s) (ESP)",
             ["DisplayTitle"] = "Killer(s) Color",
-            ["LayoutOrder"] = 4,
+            ["LayoutOrder"] = 5,
             ["Savable"] = true,
             ["InstanceType"] = "StringValue",
             ["DefaultInstanceValue"] = "Red",
@@ -683,7 +695,7 @@ local FeatureLoadout; FeatureLoadout = {
                     end
                 end
             end
-        },
+        }
     },
 
     ["Miscellaneous"] = {
@@ -783,8 +795,11 @@ local FeatureLoadout; FeatureLoadout = {
                 ["Requirement"] = "PrivateServer"
             },
             ["ScriptFunction"] = function(self, Value)
-                if workspace:FindFirstChild("Ragdolls") and Value then
-                    workspace:FindFirstChild("Ragdolls"):ClearAllChildren()
+                if Value and RagdollsFolder then
+                    RagdollsFolder:ClearAllChildren()
+                elseif not RagdollsFolder then
+                    self.Value = false
+                    self.Instance:SetAttribute("Requirement",true)
                 end
             end
         },
@@ -1224,21 +1239,20 @@ local function SetButtonState(Active)
     end)
 end
 
+
 function GetValue(FeatureName)
-    local FeatureInstance = PlusFolderSettings:FindFirstChild(FeatureName,true)
+    local FeatureInstance = Values[FeatureName]
+    if not FeatureInstance then
+        FeatureInstance = PlusFolderSettings:FindFirstChild(FeatureName,true)
+        Values[FeatureName] = FeatureInstance
+    end
     if FeatureInstance then
         return FeatureInstance.Value,FeatureInstance
     end
-    return nil
 end
 
-local function GetFunction(...)
-    for i,v in table.pack(...) do
-        if v and typeof(v) == "function" then
-            return v
-        end
-    end
-    return nil
+local function GetFunction(Function1, Function2)
+    return typeof(Function1) == "function" and Function1 or (typeof(Function2) == "function" and Function2) or nil
 end
 
 function RichTextGradientColor(Text:string,Colors)
@@ -1266,24 +1280,66 @@ function RichTextGradientColor(Text:string,Colors)
 	return Result
 end
 
-local function CheckDistance(Highlight, TargetRoot, Settings)
-    if workspace.CurrentCamera and TargetRoot then
-        local Distance = (workspace.CurrentCamera.CFrame.Position - TargetRoot.Position).Magnitude
+local function CheckDistance(Highlight,TargetRoot,Settings)
+    local Camera = TargetRoot and workspace.CurrentCamera
+    if Camera then
+        local Distance = (Camera.CFrame.Position - TargetRoot.Position).Magnitude
         if Distance>1200 then
             Distance = 0
         end
-        if Distance >= Settings["MinDistance"] then
-            local TransparencyAmount = math.clamp(1 - math.clamp((Distance - Settings["MinDistance"]) / (Settings["MaxDistance"] - Settings["MinDistance"]), 0, 1), 0.45, 1)
-            local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount + 0.05, OutlineTransparency = TransparencyAmount <= 0.95 and TransparencyAmount - 0.05 or TransparencyAmount})
-            Tween.Parent = Highlight
-            Tween:Play()
-            Debris:AddItem(Tween, 0.1)
+        local MaxDistance = Settings.MaxDistance
+        if MaxDistance then
+            local MinDistance = Settings["MinDistance"]
+            if Distance >= MinDistance then
+                local TransparencyAmount = math.clamp(1 - math.clamp((Distance - MinDistance) / (MaxDistance - MinDistance), 0, 1), 0.45, 1)
+                local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = TransparencyAmount + 0.05, OutlineTransparency = TransparencyAmount <= 0.95 and TransparencyAmount - 0.05 or TransparencyAmount})
+                Tween.Parent = Highlight
+                Tween:Play()
+                Debris:AddItem(Tween, 0.1)
+            end
         else
             local Tween = TweenService:Create(Highlight, TweenInfo.new(0.1), {FillTransparency = 1, OutlineTransparency = 1})
             Tween.Parent = Highlight
             Tween:Play()
             Debris:AddItem(Tween, 0.1)
         end
+    end
+end
+
+local function CreateText(Enabled,ItemInstance,TargetRoot,Settings)
+    Settings = type(Settings) == "table" and Settings or {["MinDistance"] = 10,["Color"] = Color3.new(1,1,1)}
+    local BillboardGui = ItemInstance:QueryDescendants("BillboardGui[$Dynamic]")
+    if Enabled and GetValue("ShowText") then
+        if not BillboardGui[1] then
+            BillboardGui = Instance.new("BillboardGui")
+            local TextLabel = Instance.new("TextLabel")
+            local UIStroke = Instance.new("UIStroke")
+            BillboardGui.Name = HttpService:GenerateGUID(false)
+            BillboardGui.Size = UDim2.new(0.5,100,0.25,25)
+            BillboardGui.AlwaysOnTop = true
+            BillboardGui.ResetOnSpawn = false
+            BillboardGui.Adornee = TargetRoot
+            BillboardGui:SetAttribute("Dynamic",true)
+            TextLabel.Text = Settings.Text or ItemInstance.Name or "Unknown"
+            local H, S, V = Settings.Color:ToHSV()
+            TextLabel.TextColor3 = Color3.fromHSV(H, S, V * 1.1)
+            TextLabel.AnchorPoint = Vector2.new(0.5,0.5)
+            TextLabel.Position = UDim2.fromScale(0.5,0.5)
+            TextLabel.Size = UDim2.fromScale(1,1)
+            TextLabel.BackgroundTransparency = 1
+            TextLabel.Parent = BillboardGui
+            UIStroke.Parent = TextLabel
+            UIStroke.Thickness = 0.75
+            BillboardGui.Parent = TargetRoot
+            CheckDistance(BillboardGui,TargetRoot,Settings)
+        else
+            BillboardGui = BillboardGui[1]
+            local H, S, V = Settings.Color:ToHSV()
+            BillboardGui.TextLabel.TextColor3 = Color3.fromHSV(H, S, V * 1.1)
+            CheckDistance(BillboardGui,TargetRoot,Settings)
+        end
+    elseif BillboardGui[1] then
+        BillboardGui[1]:Destroy()
     end
 end
 
@@ -1317,42 +1373,47 @@ end
 
 local function UpdatePlayerCrashDrop()
     local OriginString = "None"
-    for i,v in Players:GetPlayers() do
+    local CurrentPlayers = Players:GetPlayers()
+    for i,v in CurrentPlayers do
         if v ~= LocalPlayer then
-            OriginString = OriginString .. "|" .. v.Name
+            OriginString ..= "|" .. v.Name
         end
     end
-    if #Players:GetPlayers() == 3 then
-        OriginString = OriginString .. "|Both"
-    elseif #Players:GetPlayers() > 3 then
-        OriginString = OriginString .. "|Everyone"
+    local PlayerCount = #CurrentPlayers
+    if PlayerCount == 3 then
+        OriginString ..= "|Both"
+    elseif PlayerCount > 3 then
+        OriginString ..= "|Everyone"
     end
     FeatureLoadout["Miscellaneous"]["PlayerSelectCrash"]["Instance"]:SetAttribute("Options", OriginString)
 end
 
 function HandlePrivacySettings(Player)
     if Player then
-        local PlayerData = Player:FindFirstChild("PlayerData")
-        if PlayerData then
-           local PrivacySettings = PlayerData:FindFirstChild("Privacy",true)
+        local Data = Player:FindFirstChild("PlayerData")
+        if Player then
+           local PrivacySettings = Data:FindFirstChild("Privacy",true)
             if PrivacySettings then
                 for i,v in PrivacySettings:GetChildren() do
                     if not v:GetAttribute("OriginalValue") and v:IsA("BoolValue") then
                         v:SetAttribute("OriginalValue", v.Value)
                         v:GetPropertyChangedSignal("Value"):Connect(function()
-                            if FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"] and FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"].Value then
+                            local ShowPrivacy = FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"]
+                            if ShowPrivacy and ShowPrivacy.Value then
                                 v.Value = false
                             else
                                 v.Value = v:GetAttribute("OriginalValue")
                             end
                         end)
-                        if FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"] and FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"].Value then
+                        local ShowPrivacy = FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"]
+                        if ShowPrivacy and ShowPrivacy.Value then
                             v.Value = false
                         else
                             v.Value = v:GetAttribute("OriginalValue")
                         end
                     elseif v:IsA("BoolValue") then
-                        if FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"] and FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"].Value then
+                        local ShowPrivacy = FeatureLoadout["Miscellaneous"]["ShowPrivacy"]["Instance"]
+                        if ShowPrivacy and ShowPrivacy.Value then
                             v.Value = false
                         else
                             v.Value = v:GetAttribute("OriginalValue")
@@ -1401,7 +1462,7 @@ end
 
 function HandleNoliNPC(Value)
     if Value then
-        for i,v in workspace.Players.Killers:GetChildren() do
+        for i,v in KillersFolder:GetChildren() do
             if v.Name:lower() == "noli" and not Players:GetPlayerFromCharacter(v) then
                 v.Parent = Lighting
                 v:PivotTo(v:GetPivot() * CFrame.new(0,-100,0))
@@ -1449,28 +1510,14 @@ end
 
 function IsHitboxNotNear(HitboxPart,Position)
     if HitboxPart and Position and LocalRoot then
-        local Params = OverlapParams.new()
-        Params.FilterType = Enum.RaycastFilterType.Include
-        Params.FilterDescendantsInstances = {HitboxPart}
-        Params.MaxParts = 1
-        local Result = workspace:GetPartBoundsInRadius(Position, 3, Params)
+        local IsHitboxNotNearParams = OverlapParams.new()
+        IsHitboxNotNearParams.FilterType = Enum.RaycastFilterType.Include
+        IsHitboxNotNearParams.MaxParts = 1
+        IsHitboxNotNearParams.FilterDescendantsInstances = {HitboxPart}
+        local Result = workspace:GetPartBoundsInRadius(Position, 3, IsHitboxNotNearParams)
         return #Result == 0
     else
         ColoredPrint("HitboxPart/Position/HumanoidRootPart is nil while trying to check if near", "info", Color3.new(1,0.25,0))
-        return false
-    end
-end
-
-function IsPoisonOnPosition(Position)
-    if GameMap and GameMap:FindFirstChild("ToxicWater") then
-        local Params = OverlapParams.new()
-        Params.FilterType = Enum.RaycastFilterType.Include
-        Params.FilterDescendantsInstances = {GameMap.ToxicWater}
-        Params.MaxParts = 1
-        local Result = workspace:GetPartBoundsInRadius(Position, 6.7, Params)
-        return #Result > 0
-    else
-        ColoredPrint("No gamemap/poison found", "info", Color3.new(1,0.25,0))
         return false
     end
 end
@@ -1509,23 +1556,15 @@ function GoUnder(Value)
             task.wait(0.03)
             LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
             if GetValue("OfficialGame") then
-                StarterGui:SetCore("SendNotification",
-                    {
-                        Title = "Fail",
-                        Text = "Failed to become invincible, if this keeps happning please report this in the discord server",
-                        Icon = "rbxasset://textures/DevConsole/Warning.png",
-                        Duration = 4.5
-                    }
-                )
+                StarterGui:SetCore("SendNotification",{
+                    Title = "Fail",  Text = "Failed to become invincible, if this keeps happning please report this in the discord server",
+                    Icon = "rbxasset://textures/DevConsole/Warning.png", Duration = 4.5
+                })
             else
-                StarterGui:SetCore("SendNotification",
-                    {
-                        Title = "Fail",
-                        Text = "Failed to become invincible, this feature is not supported here",
-                        Icon = "rbxasset://textures/DevConsole/Warning.png",
-                        Duration = 4.5
-                    }
-                )
+                StarterGui:SetCore("SendNotification",{
+                    Title = "Fail", Text = "Failed to become invincible, this feature is not supported here",
+                    Icon = "rbxasset://textures/DevConsole/Warning.png", Duration = 4.5
+                })
                 FeatureLoadout["Features"]["Invincible"]["Instance"]:SetAttribute("Requirement", true)
             end
             return ColoredPrint("Failed to go invincible! Tried 3 Times and still failed.", "info", Color3.new(1,0.25,0))
@@ -1546,6 +1585,12 @@ function Check(ValueInstance)
                 end
             elseif ValueInstance.Value > 0.05 and ValueInstance.Value < 1 then
                 ValueInstance:Destroy()
+            else
+                ValueInstance:GetPropertyChangedSignal("Value"):Connect(function()
+                    if ValueInstance.Value > 0.05 and ValueInstance.Value < 1 then
+                        ValueInstance:Destroy()
+                    end
+                end)
             end
         end
     end
@@ -1597,7 +1642,6 @@ local function AddOverridenAnimation(ID)
         if OverriddenAnimations[ID] then
             return table.unpack(OverriddenAnimations[ID])
         end
-        local Animator = LocalHumanoid and LocalHumanoid:FindFirstChildOfClass("Animator")
         local OverrideFolder = LocalCharacter:FindFirstChild("OverrideAnimation") or Instance.new("Folder", LocalCharacter)
         OverrideFolder.Name = "OverrideAnimation"
         local AnimType = GetAnimationType(ID) or "Unknown"
@@ -1761,13 +1805,11 @@ task.spawn(function()
         local Module = require(
             ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
         )
-        
         if Module and type(Module) == "table" and Module["StaminaChanged"] then
             IsRequireSupported = true
             return {Module}
         end
     end)
-
     if not (Success and type(Result) == "table") then
         FeatureLoadout["ExploitFunctions"]["require"]["DefaultInstanceValue"] = false
     else
@@ -1775,7 +1817,6 @@ task.spawn(function()
         MainModule = Result[1]
     end
 end)
-
 
 PlaySound("deadJOutIaw_Nova",{["TimePosition"] = 5,["Volume"] = 0.0001},true)
 
@@ -1911,7 +1952,6 @@ local function ActionOnCharacter(Character)
     end)
 end
 
-
 Lighting.ChildAdded:Connect(function(Child)
     if Child.Name == "HealthDesaturation" then
         Child.Enabled = not GetValue("HideInjury")
@@ -1958,7 +1998,7 @@ if FeatureLoadout["ExploitFunctions"]["getgc"]["DefaultInstanceValue"] then
                     end
                 end
             end
-        end    
+        end
     end)
 end
 
@@ -2060,15 +2100,17 @@ else
         export type DesyncHook = {DesyncNumber:number,BufferCorruption:buffer}
         export type CorruptArguments = {Number:number,Table1:table,NilObject:any,Table2:table}
         local HookSuccess, HookResult = pcall(function()
-            local Event = Network:WaitForChild("UnreliableRemoteEvent")
-            local newcclosure = GetFunction(newcclosure, new_cclosure) or function(LClosure)
-                return LClosure
+            local UnreliableRemoteEvent = Network:WaitForChild("UnreliableRemoteEvent")
+            local DummyFunction = function(Dummy)
+                return Dummy
             end
+            local newcclosure = GetFunction(newcclosure, new_cclosure) or DummyFunction
+            local checkcaller = GetFunction(checkcaller, check_caller) or DummyFunction
             local FeatureInstance = FeatureLoadout["Features"]["Invincible"]["Instance"]
             local TypeEnum = {"invalidnumber"}
             local __namecall = true
             __namecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...): DesyncHook
-                if IsUnderground and rawequal(self, Event) and FeatureInstance.Value and getnamecallmethod() == "FireServer" then
+                if not checkcaller() and IsUnderground and getnamecallmethod() == "FireServer" and self == UnreliableRemoteEvent and FeatureInstance.Value then
                     local Args: CorruptArguments = {...}
                     if Args[1]==1 and Args[2] then
                         local DesyncerNum = 6e9
@@ -2158,32 +2200,38 @@ InGame.ChildAdded:Connect(function(Child)
     end
 end)
 
+local fireproximitypromptFunction = GetFunction(fireproximityprompt, fire_proximity_prompt)
+local fireprompt = fireproximitypromptFunction and function(ProximityPrompt)
+    return ProximityPrompt and fireproximitypromptFunction(ProximityPrompt)
+end or function(ProximityPrompt)
+    if ProximityPrompt then
+        ProximityPrompt:InputHoldBegin();ProximityPrompt:InputHoldEnd()
+    end
+end
 
+local RNG = Random.new()
 ThreadManager:Start("FeatureHandler", function()
-    local Automation = FeatureLoadout["Automation"]
-    local Features = FeatureLoadout["Features"]
-    local Visuals = FeatureLoadout["Visuals"]
-
-    if FeatureLoadout["ExploitFunctions"]["Computer"]["Instance"] then
-        FeatureLoadout["ExploitFunctions"]["Computer"]["Instance"].Value = UserInputService.KeyboardEnabled
+    local V,ComputerInstance = GetValue("Computer")
+    if ComputerInstance then
+        ComputerInstance.Value = UserInputService.KeyboardEnabled
     end
 
     task.spawn(function()
-        if LocalRoot and not IsFixingGenerator and Automation["AutoGeneratorPuzzle"]["Instance"].Value and GameMap then
+        if LocalRoot and not IsFixingGenerator and (GetValue("AutoGeneratorPuzzle")) and GameMap then
             for i,Object in GameMap:QueryDescendants("Model#Generator:has(#Main)") do
                 if LocalRoot and LocalRoot.Anchored ~= true and (Object:FindFirstChild("Main").Position - LocalRoot.Position).Magnitude < 6.7 then
                     task.spawn(function()
                         IsFixingGenerator = true
                         local Remotes = Object:FindFirstChild("Remotes")
-                        local Progress = Object:FindFirstChild("Progress")
-                        local RemoteEvent = Remotes and Remotes:FindFirstChildOfClass("RemoteEvent")
-                        if RemoteEvent and Progress and Progress.Value < 100 then
-                            while Progress.Value < 100 do
-                                if not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") or not Automation["AutoGeneratorPuzzle"]["Instance"].Value  then
+                        local Progress = Remotes and Object:FindFirstChild("Progress")
+                        local RemoteEvent = Progress and Remotes:FindFirstChildOfClass("RemoteEvent")
+                        if RemoteEvent and Progress.Value < 100 then
+                            while true do
+                                if Progress.Value > 99 or not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") or not (GetValue("AutoGeneratorPuzzle")) then
                                     break
                                 end
-                                task.wait(Random.new():NextNumber(1.45,1.6))
-                                if not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") or not Automation["AutoGeneratorPuzzle"]["Instance"].Value  then
+                                task.wait(RNG:NextNumber(1.45,1.6))
+                                if not IsFixingGenerator or not LocalCharacter or not SpeedMultipliers or not SpeedMultipliers:FindFirstChild("FixingGenerator") or not (GetValue("AutoGeneratorPuzzle")) then
                                     break
                                 end
                                 RemoteEvent:FireServer()
@@ -2198,7 +2246,7 @@ ThreadManager:Start("FeatureHandler", function()
         end
     end)
 
-    local StaminaPreset = Features["StaminaPreset"]["Instance"].Value
+    local StaminaPreset = GetValue("StaminaPreset")
     if StaminaPreset ~= "Original" and MainModule and MainModule.MaxStamina then
         if StaminaPreset == "Infinite" then
             rawset(MainModule, "Stamina", MainModule.MaxStamina)
@@ -2212,50 +2260,44 @@ ThreadManager:Start("FeatureHandler", function()
 
     if InGame and GameMap then
         task.spawn(function()
-                local Tools = InGame:QueryDescendants("#Map > Tool")
-                local DroppedTools = InGame.Parent:QueryDescendants("Folder > Tool")
-                for i,v in table.move(Tools,1,#Tools,#DroppedTools+1,DroppedTools) do
-                    CreateDynamicHighlight((GetValue("ItemsESP")), v, v:FindFirstChildWhichIsA("BasePart"), {
-                        ["MaxDistance"] = 100,
-                        ["MinDistance"] = 12,
-                        ["Color"] = ColorPresets[GetValue("ItemsColor")]
-                    })
-                    if v:IsA("Tool") and not LocalCharacter:FindFirstChild(v.Name) and not LocalPlayer:FindFirstChildOfClass("Backpack"):FindFirstChild(v.Name) and not v:GetAttribute("JustDropped") and GetValue("AutoPickup") then
-                        local ProximityPrompt = v:FindFirstChildWhichIsA("ProximityPrompt",true)
-                        local Param = OverlapParams.new()
-                        Param.FilterType = Enum.RaycastFilterType.Include
-                        Param.FilterDescendantsInstances = {v}
-                        local Result = workspace:GetPartBoundsInRadius(LocalRoot.Position, 4.5, Param)
-                        if LocalRoot and #Result > 0 and ProximityPrompt then
-                            local FireProximtyPrompt = GetFunction(fireproximityprompt, fire_proximity_prompt)
-                            if FireProximtyPrompt then
-                                FireProximtyPrompt(ProximityPrompt)
-                            else
-                                ProximityPrompt:InputHoldBegin()
-                                ProximityPrompt:InputHoldEnd()
-                            end
-                        end
-                    end
-                end
-        end)
-        for i,v in GameMap:QueryDescendants("Model#Generator:has(#Main)") do
-            if FeatureLoadout["Visuals"]["GeneratorsCheck"]["Instance"].Value == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value >= 100 then
-                CreateDynamicHighlight(false, v)
-            elseif v:FindFirstChild("Progress") then
-                CreateDynamicHighlight(FeatureLoadout["Visuals"]["GeneratorsESP"]["Instance"].Value, v, v:FindFirstChild("Main") or v:WaitForChild("Main"), {
+            local Tools = InGame:QueryDescendants("#Map > Tool")
+            local DroppedTools = InGame.Parent:QueryDescendants("Folder > Tool")
+            for i,v in table.move(Tools,1,#Tools,#DroppedTools+1,DroppedTools) do
+                CreateDynamicHighlight((GetValue("ItemsESP")), v, v:FindFirstChildWhichIsA("BasePart"), {
                     ["MaxDistance"] = 100,
                     ["MinDistance"] = 12,
-                    ["Color"] = ColorPresets[FeatureLoadout["Visuals"]["GeneratorsColor"]["Instance"].Value]
+                    ["Color"] = ColorPresets[GetValue("ItemsColor")]
+                })
+                if v:IsA("Tool") and not LocalCharacter:FindFirstChild(v.Name) and not LocalPlayer:FindFirstChildOfClass("Backpack"):FindFirstChild(v.Name) and not v:GetAttribute("JustDropped") and GetValue("AutoPickup") then
+                    local Param = OverlapParams.new()
+                    Param.FilterType = Enum.RaycastFilterType.Include
+                    Param.FilterDescendantsInstances = {v}
+                    local Result = workspace:GetPartBoundsInRadius(LocalRoot.Position, 4.5, Param)
+                    if LocalRoot and #Result > 0 then
+                        fireprompt(v:FindFirstChildWhichIsA("ProximityPrompt",true))
+                    end
+                end
+            end
+        end)
+        for i,v in GameMap:QueryDescendants("Model#Generator:has(#Main)") do
+            if (GetValue("GeneratorsCheck")) == true and v:FindFirstChild("Progress") and v:FindFirstChild("Progress").Value >= 100 then
+                CreateDynamicHighlight(false, v)
+            elseif v:FindFirstChild("Progress") then
+                CreateDynamicHighlight(GetValue("GeneratorsESP"), v, v:FindFirstChild("Main") or v:WaitForChild("Main"), {
+                    ["MaxDistance"] = 100,
+                    ["MinDistance"] = 12,
+                    ["Color"] = ColorPresets[GetValue("GeneratorsColor")]
                 })
             end
         end
     end
-    for i,v in workspace.Players:QueryDescendants("#Killers > Instance,#Survivors > Instance") do
+    for i,v in PlayersFolder:QueryDescendants("#Killers > Instance,#Survivors > Instance") do
         if v ~= LocalPlayer.Character and Players:GetPlayerFromCharacter(v) ~= nil then
-            CreateDynamicHighlight((GetValue(v.Parent.Name.."ESP")), v, v:FindFirstChild("HumanoidRootPart"), {
+            local FolderName = v.Parent.Name
+            CreateDynamicHighlight((GetValue(FolderName.."ESP")), v, v:FindFirstChild("HumanoidRootPart"), {
                 ["MaxDistance"] = 100,
                 ["MinDistance"] = 10,
-                ["Color"] = ColorPresets[GetValue(v.Parent.Name.."Color")]
+                ["Color"] = ColorPresets[GetValue(FolderName.."Color")]
             })
         else
             CreateDynamicHighlight(false, v)
@@ -2352,8 +2394,9 @@ PlayerGui.ChildAdded:Connect(function(Child)
     if Child.Name == "PuzzleUI" then
         local ClonedLoadUI = LoadUI:Clone()
         ClonedLoadUI.Parent = Child.Container.GridHolder
-        ClonedLoadUI.Visible = GetValue("AutoGeneratorPuzzle")
-        FeatureLoadout["Automation"]["AutoGeneratorPuzzle"]["Instance"]:GetPropertyChangedSignal("Value"):Connect(function()
+        local ValueAuto,InstanceAuto = GetValue("AutoGeneratorPuzzle")
+        ClonedLoadUI.Visible = ValueAuto
+        InstanceAuto:GetPropertyChangedSignal("Value"):Connect(function()
             ClonedLoadUI.Visible = GetValue("AutoGeneratorPuzzle")
         end)
         task.spawn(function()
@@ -2370,8 +2413,8 @@ PlayerGui.ChildAdded:Connect(function(Child)
     end
 end)
 
-if workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers") then
-    workspace.Players.Killers.ChildAdded:Connect(function(Child)
+if KillersFolder then
+    KillersFolder.ChildAdded:Connect(function(Child)
         task.wait(0.5)
         HandleNoliNPC(GetValue("DisableNoliNPC"))
     end)
@@ -2386,6 +2429,7 @@ end
 
 RoundEvent.Event:Connect(function(Data)
     if Data == "Start" then
+        task.wait(0.5)
         if GetValue("ShowChat") then
             TextChatService.ChatWindowConfiguration.Enabled = true
         end
@@ -2396,7 +2440,7 @@ end)
 
 workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(function()
     for i,v in workspace:QueryDescendants("Highlight[$Dynamic]") do
-        for i,v in v:QueryDescendants("Tween") do v:Cancel() end
+        for i2,v2 in v:QueryDescendants("Tween") do v2:Cancel() end
         v.FillTransparency = 0.9
         v.OutlineTransparency = 0.9
     end
@@ -2440,10 +2484,10 @@ if InGame then
     end)
 end
 
-if workspace:FindFirstChild("Ragdolls") then
-    workspace:FindFirstChild("Ragdolls").ChildAdded:Connect(function(Ragdoll)
+if RagdollsFolder then
+    RagdollsFolder.ChildAdded:Connect(function(Ragdoll)
         if GetValue("DeleteRagdolls") then
-            workspace:FindFirstChild("Ragdolls"):ClearAllChildren()
+            RagdollsFolder:ClearAllChildren()
         end
     end)
 end
@@ -3302,7 +3346,10 @@ local function UICheck()
     SetButtonState(false)
     if Status then
         if not NewUIVersion then
-            Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+            local LayoutInstance = Buttons:FindFirstChildOfClass("UIListLayout") or Buttons:FindFirstChildOfClass("UIGridLayout")
+            if LayoutInstance then
+                LayoutInstance.VerticalAlignment = Enum.VerticalAlignment.Top
+            end
         else
             SideBar:FindFirstChildOfClass("UIPadding").PaddingRight = UDim.new(0.2,0)
             SideBar:FindFirstChildOfClass("UIPadding").PaddingLeft = UDim.new(0,0)
@@ -3334,7 +3381,10 @@ local function UICheck()
             SideBar:FindFirstChildOfClass("UIPadding").PaddingLeft = UDim.new(0.2,0)
             UIScale.Scale = 1.3
         end
-        Buttons.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        local LayoutInstance = Buttons:FindFirstChildOfClass("UIListLayout") or Buttons:FindFirstChildOfClass("UIGridLayout")
+        if LayoutInstance then
+            LayoutInstance.VerticalAlignment = Enum.VerticalAlignment.Center
+        end
         PlusMenu.SettingsContainer.ImageTransparency = 0.3
         PlusMenu.SettingsContainer.Contents.ScrollBarImageTransparency = 0.45
         if SideBar:IsA("ImageLabel") then
@@ -3362,6 +3412,7 @@ local function UICheck()
         RoundEvent:Fire("End")
     end
 end
+
 MainUI.ChildAdded:Connect(function(Child)
     if Child.Name == "AbilityContainer" then
         SideBar:SetAttribute("WasVisible", false)
