@@ -65,7 +65,7 @@ local OverriddenAnimations,AllAnimations,Values = {},{},{}
 local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,GoUnder,HandleAllowJumping,HandleNoliNPC,ChangeTrackWithOverride,LastTrack,NoliConfig,TableValueFind,ColoredPrint,Handle007n7NPC,GetValue
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(128,0,128),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-06-13"
+local GameVersionForScript = "2026-06-14"
 local Worked,CurrentGameVersion = pcall(function() return MarketplaceService:GetProductInfoAsync(game.PlaceId,Enum.InfoType.Asset)["Updated"] end); CurrentGameVersion = Worked and CurrentGameVersion or GameVersionForScript
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
@@ -1248,7 +1248,7 @@ function GetValue(FeatureName,InstanceOnly)
     if InstanceOnly then
         return FeatureInstance
     else
-        return FeatureInstance.Value
+        return FeatureInstance and FeatureInstance.Value or nil
     end
 end
 
@@ -1801,6 +1801,7 @@ end
 
 local IsRequireSupported = false
 task.spawn(function()
+    local FirstTest
     local Success, Result = pcall(function()
         local Module = require(
             ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
