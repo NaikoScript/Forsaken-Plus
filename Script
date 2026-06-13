@@ -321,7 +321,7 @@ local FeatureLoadout; FeatureLoadout = {
                             v:SetAttribute("Checked", true)
                             v.ChildAdded:Connect(function(GrandChild)
                                 if GrandChild:IsA("BasePart") then
-                                    GrandChild.CanTouch = not FeatureLoadout["Features"]["DisableFootprints"]["Instance"].Value
+                                    GrandChild.CanTouch = not GetValue("DisableFootprints")
                                 end
                             end)
                         end
@@ -829,7 +829,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["ScriptFunction"] = function(self, Value)
                 if Value then
                     self.Instance.Value = false
-                    local PlayerName = FeatureLoadout["Miscellaneous"]["PlayerSelectCrash"]["Instance"].Value
+                    local PlayerName = GetValue("PlayerSelectCrash")
                     if PlayerName == "Everyone" or PlayerName == "Both" then
                         for i,Player in Players:GetPlayers() do
                             if Player ~= LocalPlayer then
@@ -1239,15 +1239,16 @@ local function SetButtonState(Active)
     end)
 end
 
-
-function GetValue(FeatureName)
+function GetValue(FeatureName,InstanceOnly)
     local FeatureInstance = Values[FeatureName]
     if not FeatureInstance then
         FeatureInstance = PlusFolderSettings:FindFirstChild(FeatureName,true)
         Values[FeatureName] = FeatureInstance
     end
-    if FeatureInstance then
-        return FeatureInstance.Value,FeatureInstance
+    if InstanceOnly then
+        return FeatureInstance
+    else
+        return FeatureInstance.Value
     end
 end
 
@@ -1434,8 +1435,8 @@ function HandleAllowJumping(Value)
                 return
             end
             local Connection;Connection = LocalHumanoid.StateChanged:Connect(function(old,new)
-                if LocalCharacter.Parent ~= "Spectator" and new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall and LocalHumanoid.JumpPower > 0 and ((FeatureLoadout["Features"]["EnableJumping"]["Instance"] and FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value) or false) then
-                    if not(FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value) then
+                if LocalCharacter.Parent ~= "Spectator" and new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall and LocalHumanoid.JumpPower > 0 and (GetValue("EnableJumping") or false) then
+                    if not(GetValue("EnableJumping")) then
                         Connection:Disconnect()
                         LocalHumanoid.JumpPower = LocalHumanoid:GetAttribute("JumpingConnection") or 0
                         LocalHumanoid:SetAttribute("JumpingConnection",nil)
@@ -1446,7 +1447,7 @@ function HandleAllowJumping(Value)
                         LocalHumanoid.JumpPower = 0
                     end)
                     task.wait(1.5)
-                    if FeatureLoadout["Features"]["EnableJumping"]["Instance"].Value then
+                    if GetValue("EnableJumping") then
                         LocalHumanoid.JumpPower = 47
                     else
                         Connection:Disconnect()
@@ -1680,8 +1681,7 @@ function ChangeTrackWithOverride(Track,AnimationName,SkipOverride)
                     LastTrack = Track
                 end
                 BindableShouldStop.Event:Once(function()
-                    local AnimationPreset = GetValue("AnimationChanger")
-                    if AnimationPreset.Value == "Original" then
+                    if GetValue("AnimationChanger") == "Original" then
                         OverrideTrack:Stop()
                         LastTrack:Play()
                     else
@@ -2394,10 +2394,10 @@ PlayerGui.ChildAdded:Connect(function(Child)
     if Child.Name == "PuzzleUI" then
         local ClonedLoadUI = LoadUI:Clone()
         ClonedLoadUI.Parent = Child.Container.GridHolder
-        local ValueAuto,InstanceAuto = GetValue("AutoGeneratorPuzzle")
-        ClonedLoadUI.Visible = ValueAuto
+        local InstanceAuto = GetValue("AutoGeneratorPuzzle",true)
+        ClonedLoadUI.Visible = InstanceAuto.Value
         InstanceAuto:GetPropertyChangedSignal("Value"):Connect(function()
-            ClonedLoadUI.Visible = GetValue("AutoGeneratorPuzzle")
+            ClonedLoadUI.Visible = InstanceAuto.Value
         end)
         task.spawn(function()
 	        while task.wait() and ClonedLoadUI and ClonedLoadUI.Parent do
