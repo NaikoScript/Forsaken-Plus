@@ -7,13 +7,13 @@
 ## Script thumbnail
 ![ForsakenPlus](https://github.com/user-attachments/assets/dd8e41cc-78e0-4377-a411-5612d43b7d55)
 ## Script version
-`Version 1.27`
+`Version 1.4`
 ## Shortened Script
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/NaikoScript/Forsaken-Plus/main/Script"))()
 ```
 ## Game information
-`Last seen update : 28D/05M/2026`
+`Last seen update : 10D/06M/2026`
 ```
 https://www.roblox.com/games/18687417158
 ```
