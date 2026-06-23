@@ -18,7 +18,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.5"
+local Version = "1.51"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -68,7 +68,7 @@ local OverriddenAnimations,AllAnimations,Values = {},{},{}
 local PlaySound,MainModule,HandlePrivacySettings,Check,ModulesOptions,RichTextGradientColor,IsHitboxNotNear,GoUnder,HandleAllowJumping,HandleNoliNPC,ChangeTrackWithOverride,LastTrack,NoliConfig,TableValueFind,ColoredPrint,Handle007n7NPC,GetValue,UtilModule
 local ColorPresets = {["White"] = Color3.fromRGB(255,255,255),["Teal"] = Color3.fromRGB(3,252,157),["Green"] = Color3.fromRGB(0,255,0),["Purple"] = Color3.fromRGB(158, 0, 179),["Red"] = Color3.fromRGB(255,0,0),["Blue"] = Color3.fromRGB(0,0,255),["Cyan"] = Color3.fromRGB(0,255,255),["Gold"] = Color3.fromRGB(255,215,0),["Orange"] = Color3.fromRGB(255,165,0)}
 local IgnoreKeybinds = {"W", "A", "S", "D"}
-local GameVersionForScript = "2026-06-20"
+local GameVersionForScript = "2026-06-23"
 local FeatureLoadout; FeatureLoadout = {
     ["ExploitFunctions"] = {
           ["TabAttributes"] = {
@@ -426,7 +426,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = "Original",
             ["ExtraData"] = {
                 ["Requirement"] = "require",
-                ["Options"] = "Original|Jason|Slasher|c00lkidd|John Doe|Noli|1x1x1x1|Nosferatu|Azure|Dusekkar|!Herobrine|!Brimstone|#MArtist"
+                ["Options"] = "Original|Jason|Slasher|c00lkidd|John Doe|Noli|1x1x1x1|Nosferatu|Azure|Dusekkar"
             },
             ["ScriptFunction"] = function(self, Value)
                 if Value == "Original" then
@@ -931,7 +931,7 @@ local FeatureLoadout; FeatureLoadout = {
                 if Value and not workspace:GetAttribute("EffectActive") then
                     workspace:SetAttribute("EffectActive",true)
                     self.Instance.Value = false
-                    Network:WaitForChild("RemoteEvent"):FireServer("ExecuteCommand", {"GiveStatus", "All", "Nausea", -1e11, 10})
+                    Network:WaitForChild("RemoteEvent"):FireServer("ExecuteCommand",{"GiveStatus","All","Nausea",-1e11,10})
                     task.delay(10, function()
                         workspace:SetAttribute("EffectActive",nil)
                         self.Instance.Value = false
@@ -960,7 +960,7 @@ local FeatureLoadout; FeatureLoadout = {
                     end)
                     if Value then
                         repeat
-                            Network:WaitForChild("RemoteEvent"):FireServer("ExecuteCommand", {"GiveStatus", game.Players.LocalPlayer.Name, "Strength", 99999, 1})
+                            Network:WaitForChild("RemoteEvent"):FireServer("ExecuteCommand",{"GiveStatus",game.Players.LocalPlayer.Name,"Strength",1000000,1})
                             task.wait(0.5)
                         until not self.Instance.Value
                     end
@@ -1560,18 +1560,24 @@ function HandleAllowJumping(Value)
                 return
             end
             local Connection;Connection = LocalHumanoid.StateChanged:Connect(function(old,new)
-                if LocalCharacter.Parent ~= "Spectator" and new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall and LocalHumanoid.JumpPower > 0 and (GetValue("EnableJumping") or false) then
+                if LocalHumanoid.FloorMaterial == Enum.Material.Air then 
+                    return
+                end
+                if LocalCharacter.Parent ~= "Spectator" and new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall and LocalHumanoid.JumpPower > 0 and (GetValue("EnableJumping") or false) and not LocalHumanoid:GetAttribute("CDJump") then
                     if not(GetValue("EnableJumping")) then
                         Connection:Disconnect()
                         LocalHumanoid.JumpPower = LocalHumanoid:GetAttribute("JumpingConnection") or 0
                         LocalHumanoid:SetAttribute("JumpingConnection",nil)
                         return
                     end
-                    task.spawn(function()
-                        task.wait(0.067)
+                    LocalHumanoid:GetPropertyChangedSignal("FloorMaterial"):Wait()
+                    if LocalHumanoid.FloorMaterial == Enum.Material.Air then
                         LocalHumanoid.JumpPower = 0
-                    end)
-                    task.wait(1.5)
+                    else
+                        return
+                    end
+                    LocalHumanoid:SetAttribute("CDJump",true)
+                    task.wait(1.25)
                     if GetValue("EnableJumping") then
                         LocalHumanoid.JumpPower = 47
                     else
@@ -1579,6 +1585,7 @@ function HandleAllowJumping(Value)
                         LocalHumanoid.JumpPower = LocalHumanoid:GetAttribute("JumpingConnection") or 0
                         LocalHumanoid:SetAttribute("JumpingConnection",nil)
                     end
+                    LocalHumanoid:SetAttribute("CDJump",nil)
                 end
             end)
         end
@@ -1640,7 +1647,7 @@ function IsHitboxNotNear(HitboxPart,Position)
         IsHitboxNotNearParams.FilterType = Enum.RaycastFilterType.Include
         IsHitboxNotNearParams.MaxParts = 1
         IsHitboxNotNearParams.FilterDescendantsInstances = {HitboxPart}
-        local Result = workspace:GetPartBoundsInRadius(Position, 3, IsHitboxNotNearParams)
+        local Result = workspace:GetPartBoundsInRadius(Position, 2.5, IsHitboxNotNearParams)
         return #Result == 0
     else
         ColoredPrint("HitboxPart/Position/HumanoidRootPart is nil while trying to check if near", "info", Color3.new(1,0.25,0))
@@ -1651,20 +1658,30 @@ end
 
 local function VelocityToPosition(target)
     local TimeLimit = workspace.DistributedGameTime + 7
+    local OGCG = LocalRoot.CollisionGroup
+    local AllParts = LocalCharacter:QueryDescendants("BasePart:not([CollisonGroup=Default])")
+    for i,v in AllParts do
+        v.CollisionGroup = "None"
+    end
 	local Body = Instance.new("BodyVelocity")
 	Body.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 	Body.Velocity = Vector3.new(0, 0, 0)
 	Body.Parent = LocalRoot
-	while (LocalRoot.Position - target).Magnitude > 2 or workspace.DistributedGameTime >= TimeLimit do
+	while (LocalRoot.Position - target).Magnitude > 2 and not (workspace.DistributedGameTime >= TimeLimit) do
 		Body.Velocity = (target - LocalRoot.Position).Unit * 100
-
 		RunService.RenderStepped:Wait()
 	end
-    Debris:AddItem(Body,0.35)
+    if workspace.DistributedGameTime >= TimeLimit then
+        warn("Failed to do in time")
+    end
+    Body:Destroy()
+    for i,v in AllParts do
+        v.CollisionGroup = OGCG
+    end
 end
 
 function GoUnder(Value)
-    local Offset = 15
+    local Offset = 22
     if Value == nil then
         IsUnderground = false
         Value = GetValue("Invincible")
@@ -1701,20 +1718,20 @@ function GoUnder(Value)
         else
             UnderCFrame = OldCFrame * CFrame.new(0, -Offset, 0)
         end
-        task.wait(0.25)
-        LocalRoot.CFrame = UnderCFrame
         LocalHumanoid.CameraOffset = Vector3.new(0, 12e12 ,0)
+        task.wait(0.1)
+        LocalRoot.CFrame = UnderCFrame
         local Tries = 0
         local TimerStop = workspace.DistributedGameTime + 3.5
         repeat
             Tries += 1
             LocalRoot.Velocity = Vector3.zero
-            task.wait(0.01)
-            LocalRoot.Velocity = Vector3.zero
             VelocityToPosition(UnderCFrame.Position)
-            repeat task.wait(0.02) until IsHitboxNotNear(LocalCharacter:FindFirstChild("QueryHitbox"),OldCFrame.Position) or not LocalRoot or not LocalCharacter or TimerStop < workspace.DistributedGameTime
+            LocalHead.Anchored = true
+            repeat task.wait() until IsHitboxNotNear(LocalCharacter:FindFirstChild("QueryHitbox"),OldCFrame.Position) or not LocalRoot or not LocalCharacter or TimerStop < workspace.DistributedGameTime
             IsUnderground = true
-            task.wait(0.01)
+            task.wait()
+            LocalRoot.Velocity = Vector3.zero
             LocalHead.Anchored = false
             LocalRoot.CFrame = OldCFrame
             RunService.Heartbeat:Wait()
@@ -1724,8 +1741,6 @@ function GoUnder(Value)
             IsUnderground = false
             workspace:SetAttribute("Invincible",nil)
             GetValue("Invincible",true).Value = false
-            task.wait(0.03)
-            LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
             if GetValue("OfficialGame") then
                 StarterGui:SetCore("SendNotification",{
                     Title = "Fail",  Text = "Failed to become invincible, if this keeps happning please report this in the discord server",
@@ -1740,8 +1755,6 @@ function GoUnder(Value)
             end
             return ColoredPrint("Failed to go invincible! Tried 3 Times and still failed.", "info", Color3.new(1,0.25,0))
         end
-        task.wait(0.1)
-        LocalHumanoid.CameraOffset = Vector3.new(0, 0, 0)
     else
         IsUnderground = false
     end
@@ -1749,7 +1762,7 @@ end
 
 function Check(ValueInstance)
     if GetValue("AntiSlowness") then
-        if ValueInstance then
+        if ValueInstance and ValueInstance.Name ~= "Sprinting" then
             if ValueInstance.Name == "DirectionalMovement" or ValueInstance.Name == "FixingGenerator" or ValueInstance.Name:upper() == "ENRAGED" then
                 if ValueInstance.Value < 1 then
                     ValueInstance.Value = 1
@@ -1978,6 +1991,9 @@ function ThreadManager:Start(Name,Function,Interval)
     end)
 end
 
+local InputDeviceType = {Keyboard = "PC", MouseButton1 = "PC", MouseButton2 = "PC", MouseMovement = "PC", Touch = "Mobile", Gamepad1 = "Console"}
+local Device = InputDeviceType[UserInputService:GetLastInputType().Name]
+local getgc = GetFunction(getgc, get_gc)
 local IsRequireSupported = false
 task.spawn(function()
     local generaltest,result = pcall(function()
@@ -1988,21 +2004,33 @@ task.spawn(function()
     end)
     local Success,Result
     if tostring(Err):find("cyclic") then
-        Success, Result = pcall(function()
-            local Module = require(
-                ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
-            )
-            if Module and type(Module) == "table" and Module["StaminaChanged"] then
-                IsRequireSupported = true
-                return {Module}
-            end
-        end)
+        if Device == "PC" then
+            Success, Result = pcall(function()
+                local Module = require(
+                    ReplicatedStorage:WaitForChild("Systems"):WaitForChild("Character"):WaitForChild("Game"):WaitForChild("Sprinting")
+                )
+                if Module and type(Module) == "table" and Module["StaminaChanged"] then
+                    IsRequireSupported = true
+                    return Module
+                end
+            end)
+        else
+            Success, Result = pcall(function()
+                for i,Object in getgc(true) do
+                    if type(Object) == "table" then
+                        if rawget(Object, "Stamina") and rawget(Object, "StaminaChanged") then
+                            return Object
+                        end
+                    end
+                end
+            end)
+        end
     end
     if not (Success and type(Result) == "table") then
         FeatureLoadout["ExploitFunctions"]["require"]["DefaultInstanceValue"] = false
     else
         IsRequireSupported = true
-        MainModule = Result[1]
+        MainModule = Result
     end
     local KillerAssets = ReplicatedStorage:FindFirstChild("Assets")
     local SkinsAssets = KillerAssets and KillerAssets:FindFirstChild("Skins")
@@ -2063,10 +2091,10 @@ task.spawn(function()
                             Scale.Parent = ClonedUI
                             Scale.Scale = 1.2
                             ClonedUI.Name = "FSUser"
-                            ClonedUI.Image = "rbxassetid://130618143049194"
+                            ClonedUI.Image = "rbxassetid://118860705115878"
                             ClonedUI.Parent = PlayersUI
                             ClonedUI.Visible = true
-                            ClonedUI.AnchorPoint = Vector2.new(0.425,0.5)
+                            ClonedUI.AnchorPoint = Vector2.new(0.425,0.425)
                             ClonedUI.MouseEnter:Connect(function()
                                 UtilModule:CreateTooltip("This is a Forsaken Plus user.")
                             end)
@@ -2117,7 +2145,7 @@ local function ActionOnCharacter(Character)
         end)
         if SpeedMultipliers ~= nil and typeof(SpeedMultipliers) == "Instance" then
             SpeedMultipliers.ChildAdded:Connect(function(Child)
-                if not Child:IsA("NumberValue") or Child.Name == "Sprinting"  then
+                if not Child:IsA("NumberValue") or Child.Name == "Sprinting" then
                     return
                 end
                 Check(Child)
@@ -2209,24 +2237,8 @@ if Lighting:FindFirstChild("HealthDesaturation") then
     Lighting.HealthDesaturation.Enabled = not GetValue("HideInjury")
 end
 
-local getgc = GetFunction(getgc, get_gc)
-if getgc then
-    if not MainModule then
-        for i,Object in getgc() do
-            if type(Object) == "table" then
-                if rawget(Object, "Stamina") and rawget(Object, "StaminaChanged") then
-                    MainModule = Object
-                    break
-                end
-            end
-        end
-    end
-
-    if not MainModule then
-        ColoredPrint("Failed to load required modules, some features may be hidden.\n use a different executor that supports 'require' and 'getgc'", "warn", Color3.new(1,0.25,0))
-        FeatureLoadout["ExploitFunctions"]["getgc"]["DefaultInstanceValue"] = false
-    end
-else
+if not MainModule then
+    ColoredPrint("Failed to load required modules, some features may be hidden.\n use a different executor that supports 'require' and 'getgc'", "warn", Color3.new(1,0.25,0))
     FeatureLoadout["ExploitFunctions"]["getgc"]["DefaultInstanceValue"] = false
 end
 
@@ -2452,7 +2464,7 @@ end)
 
 
 
-local BlockableAttacks = {"slash","stab","attack","punch","behead","gashingwoundstart","swing","tosow"}
+local BlockableAttacks = {"slash","stab","attack","punch","behead","gashingwoundstart","swing","tosow","sow"}
 local FireSignal = GetFunction(firesignal,FireSignal)
 local SelfParams = OverlapParams.new()
 SelfParams.MaxParts = 1
