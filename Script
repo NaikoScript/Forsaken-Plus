@@ -18,7 +18,7 @@ end)
 
 -- General Variables --
 
-local Version = "1.51"
+local Version = "1.52"
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local LocalCharacter = LocalPlayer.Character
@@ -51,6 +51,7 @@ local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 local PhysicsService = game:GetService("PhysicsService")
 local TweenService = game:GetService("TweenService")
+local GroupService = game:GetService("GroupService")
 local HttpService = game:GetService("HttpService")
 local LogService = game:GetService("LogService")
 local RunService = game:GetService("RunService")
@@ -369,7 +370,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["ScriptFunction"] = function(self, Value)
                 for i,v in InGame:GetChildren() do
                     if v.Name == "SpikeCollision" then
-                        v.Size = Value and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
+                        v.Size = Value and Vector3.new(11,3.5,3.5) or Vector3.new(11, 5, 5)
                         v.Shape = Value and Enum.PartType.Cylinder or Enum.PartType.Block
                     end
                 end
@@ -426,7 +427,7 @@ local FeatureLoadout; FeatureLoadout = {
             ["DefaultInstanceValue"] = "Original",
             ["ExtraData"] = {
                 ["Requirement"] = "require",
-                ["Options"] = "Original|Jason|Slasher|c00lkidd|John Doe|Noli|1x1x1x1|Nosferatu|Azure|Dusekkar"
+                ["Options"] = "Original|Jason|Slasher|c00lkidd|Noli|1x1x1x1|Nosferatu|Azure|Dusekkar"
             },
             ["ScriptFunction"] = function(self, Value)
                 if Value == "Original" then
@@ -1551,6 +1552,29 @@ function HandlePrivacySettings(Player)
     end
 end
 
+local function HandleCheckForMod(Player)
+    local Rank = Player:GetRoleInGroupAsync(33548380)
+    if Rank and Rank:lower():find("mod") and not workspace:GetAttribute("ModFound") then
+        workspace:SetAttribute("ModFound",true)
+        StarterGui:SetCore("SendNotification",{
+            Title = "WARNING", Text = "A Moderator is in your server all features are now disabled",
+            Icon = "rbxasset://textures/DevConsole/Warning.png", Duration = 10
+        })
+        FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] = true
+        for i,v in FeatureLoadout do
+            if i ~= "ExploitFunctions" then
+                if i ~= "TabAttributes" then
+                    for i2,v2 in v do
+                        if v2["Instance"] then
+                            v2["Instance"].Value = v2["DefaultInstanceValue"]
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 function HandleAllowJumping(Value)
     if LocalHumanoid and not LocalHumanoid:GetAttribute("JumpingConnection") then
         if Value then
@@ -2087,14 +2111,11 @@ task.spawn(function()
                         end
                         local ClonedUI = ReplicatedStorage:FindFirstChild("NoChat",true) and ReplicatedStorage:FindFirstChild("NoChat",true):Clone()
                         if ClonedUI then
-                            local Scale = Instance.new("UIScale")
-                            Scale.Parent = ClonedUI
-                            Scale.Scale = 1.2
                             ClonedUI.Name = "FSUser"
                             ClonedUI.Image = "rbxassetid://118860705115878"
                             ClonedUI.Parent = PlayersUI
                             ClonedUI.Visible = true
-                            ClonedUI.AnchorPoint = Vector2.new(0.425,0.425)
+                            ClonedUI.AnchorPoint = Vector2.new(0.5,0.425)
                             ClonedUI.MouseEnter:Connect(function()
                                 UtilModule:CreateTooltip("This is a Forsaken Plus user.")
                             end)
@@ -2176,14 +2197,31 @@ local function ActionOnCharacter(Character)
                     end
                 end
                 local function UpdateVelocity()
-                    if GetValue("ControllableDash") then
+                    if GetValue("ControllableDash") and (LocalCharacter.Name:gsub("0","O"):lower():find("coolkid")) and LocalHumanoid.MoveDirection ~= Vector3.zero then
                         Child.LineDirection = LocalHumanoid.MoveDirection * OriginalVelocityMag
+                    elseif GetValue("ControllableDash") and (LocalCharacter.Name:gsub("0","O"):lower():find("coolkid")) and workspace.CurrentCamera then
+                        local CameraDirection = Vector3.new(workspace.CurrentCamera.CFrame.LookVector.X, 0, workspace.CurrentCamera.CFrame.LookVector.Z)
+                        Child.LineDirection = CameraDirection.Unit * OriginalVelocityMag
+                        if Child.LineVelocity > 0 then
+                            LocalRoot.CFrame = LocalRoot.CFrame:Lerp(CFrame.lookAt(LocalRoot.Position, LocalRoot.Position + CameraDirection),0.05)
+                        end
                     else
                         Child.LineDirection = OriginalVelocity
                     end
                 end
                 UpdateVelocity()
-                LocalHumanoid:GetPropertyChangedSignal("MoveDirection"):Connect(UpdateVelocity)
+                local Connection1;Connection1 = LocalHumanoid:GetPropertyChangedSignal("MoveDirection"):Connect(UpdateVelocity)
+                local Connection2;Connection2 = workspace.CurrentCamera:GetPropertyChangedSignal("CFrame"):Connect(UpdateVelocity)
+                Child.Destroying:Once(function()
+                    if Connection1 then
+                        Connection1:Disconnect()
+                        Connection1 = nil
+                    end
+                    if Connection2 then
+                        Connection2:Disconnect()
+                        Connection2 = nil
+                    end
+                end)
             end
         end)
         task.wait(0.05)
@@ -2326,7 +2364,9 @@ for TabName, TabContents in FeatureLoadout do
                     end
                     local TableData2 = HttpService:JSONDecode(ReturnData("Data.txt", true))
                     TableData2[SettingName] = SettingData.DefaultInstanceValue ~= NewInstance.Value and NewInstance.Value or nil
-                    ChangeData("Data.txt", HttpService:JSONEncode(TableData2), true)
+                    if FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] then
+                        ChangeData("Data.txt",HttpService:JSONEncode(TableData2),true)
+                    end
                 end)
             elseif not FeatureLoadout["ExploitFunctions"]["files"]["DefaultInstanceValue"] and SettingData["Savable"] and not WarnedAboutFilesCompatability then
                 WarnedAboutFilesCompatability = true
@@ -2414,12 +2454,15 @@ task.spawn(function()
     for i,v in Players:GetPlayers() do
         if v ~= LocalPlayer then
             HandlePrivacySettings(v)
+            HandleCheckForMod(v)
         end
     end
 end)
 Players.PlayerAdded:Connect(function(Player)
-    task.wait(2)
+    HandleCheckForMod(Player)
+    task.delay(2,function()
     HandlePrivacySettings(Player)
+    end)
 end)
 
 Players.PlayerAdded:Connect(UpdatePlayerCrashDrop)
@@ -2472,7 +2515,7 @@ SelfParams.FilterType = Enum.RaycastFilterType.Include
 local UseActorAbility = Network and Network:FindFirstChildOfClass("RemoteEvent")
 local ShowHitboxesSetting = PlayerData and PlayerData:FindFirstChild("Settings") and PlayerData.Settings:FindFirstChild("ShowHitboxes",true)
 local function HandleKiller(Killer)
-    if true then
+    if Players:GetPlayerFromCharacter(Killer) then
         local Humanoid = Killer:FindFirstChildOfClass("Humanoid") or Killer:WaitForChild("Humanoid")
         local QueryHitbox = Killer:FindFirstChild("QueryHitbox") or Killer:WaitForChild("QueryHitbox")
         local Animator = Humanoid:FindFirstChildOfClass("Animator")
@@ -2796,8 +2839,10 @@ if InGame then
                 end)
             end
         elseif Child.Name == "SpikeCollision" then
-            Child.Size = GetValue("SmallerSpikeCollisions") and Vector3.new(10,3.25,3.25) or Vector3.new(11, 5, 5)
-            Child.Shape = GetValue("SmallerSpikeCollisions") and Enum.PartType.Cylinder or Enum.PartType.Block
+            task.delay(3.5,function()
+                Child.Size = GetValue("SmallerSpikeCollisions") and Vector3.new(11,3.5,3.5) or Vector3.new(11, 5, 5)
+                Child.Shape = GetValue("SmallerSpikeCollisions") and Enum.PartType.Cylinder or Enum.PartType.Block
+            end)
         end
     end)
 end
@@ -2825,16 +2870,14 @@ end
 
 local BaseTweenInfo = TweenInfo.new(0.25)
 local MenuData
-local Signal
 if NewUIVersion then
     local suc,err
     if IsRequireSupported then
         suc,err = pcall(function()
-            Signal = require(ReplicatedStorage.Modules:FindFirstChild("Utilities") and ReplicatedStorage.Modules.Utilities:FindFirstChild("Signal",true) or ReplicatedStorage.Modules:FindFirstChild("Misc"):FindFirstChild("Signal") or ReplicatedStorage.Modules:FindFirstChild("Signal",true))
             MenuData = require(ReplicatedStorage.Systems.Player:FindFirstChild("SidebarHandler",true))
         end)
     end
-    if not suc or not MenuData or not Signal then
+    if not suc or not MenuData then
         ColoredPrint("⚠ YOUR EXECUTOR DOES NOT SUPPORT THIS UI VERSION! ⚠\n Switch to a different executor or play a forsaken clone game that uses the V1 UI.\n The executor must fully support 'require' function for the script to work here", "error", Color3.new(1,0.4,0.25))
         PlusButton.Visible = false
         SidePlusButton.Visible = false
@@ -2850,7 +2893,8 @@ if NewUIVersion then
     function UICreator.new(MenuName, MenuScreen)
         local Metaverse = setmetatable({}, UICreator)
         Metaverse.Menu = MenuScreen:Clone()
-        Metaverse.Toggled = Signal.new()
+        local MenuToggleBin = Instance.new("BindableEvent")
+        Metaverse.Toggled = MenuToggleBin
         Metaverse.Button = nil
         Metaverse.MenuName = MenuName
         Metaverse.Menu.Visible = false
